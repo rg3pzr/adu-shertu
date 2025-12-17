@@ -22,6 +22,8 @@ import os # NEW: ADDED os
 # To enable, run with: DEVELOPER_MODE=True python app.py
 DEVELOPER_MODE = os.environ.get('DEVELOPER_MODE', 'False').lower() in ('true', '1', 't')
 
+print(f"*** DEBUG: DEVELOPER_MODE is set to: {DEVELOPER_MODE} ***")
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 CORS(app)
