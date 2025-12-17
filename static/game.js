@@ -203,7 +203,13 @@ function handleCardReplacementRequired(data) {
 }
 
 function handleCardReplaced(data) {
-    showStatus('Card replaced', 'success');
+    showStatus('Card replaced and shown to all players', 'success');
+    // If I am the one who replaced the card, my local gameState needs to know
+    if (gameState.game_state.players[data.player_index].id === gameState.myPlayerId) {
+        // The game_state_update event from the server will handle the bulk of this,
+        // but we can trigger a re-render just in case.
+        renderMyCards();
+    }
 }
 
 function handleStage2Started(data) {

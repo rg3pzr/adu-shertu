@@ -271,17 +271,19 @@ def handle_call_trump(data):
     result = game.attempt_trump_call(player_index, suit)
     
     if result['success']:
-        # Broadcast trump called
-        socketio.emit('trump_called', {
-            'player_index': player_index,
-            'player_name': game.players[player_index]['name'],
-            'trump_suit': result['trump_suit'],
-            'base_okalu': result['base_okalu'],
-            'game_state': game.get_game_state()
-        }, room=game_code)
-    elif result.get('requires_replacement'):
-        # Send replacement requirement to player
-        emit('card_replacement_required', result)
+        # If it needs replacement, we tell the specific player
+        if result.get('requires_replacement'):
+            emit('card_replacement_required', result)
+            # Broadcast a general update so others know a call happened but replacement is pending
+            socketio.emit('game_state_update', {'game_state': game.get_game_state()}, room=game_code)
+        else:
+            # Standard success: Move everyone to Stage 1 Challenges
+            socketio.emit('trump_called', {
+                'player_index': player_index,
+                'player_name': game.players[player_index]['name'],
+                'trump_suit': result['trump_suit'],
+                'game_state': game.get_game_state()
+            }, room=game_code)
     else:
         emit('error', {'message': result.get('message', 'Failed to call trump')})
 
@@ -371,18 +373,13 @@ def handle_replace_card(data):
     result = game.replace_same_suit_card(player_index, suit)
     
     if result['success']:
-        # Broadcast card replacement to all
-        socketio.emit('card_replaced', {
-            'player_index': player_index,
-            'discarded': result['discarded'],
-            'replacements_shown': result['replacements_shown'],
-            'final_card': result['final_card']
-        }, room=game_code)
+        # Broadcast the replacement visuals
+        socketio.emit('card_replaced', result, room=game_code)
         
-        # Send updated cards to player
-        socketio.emit('cards_updated', {
-            'game_state': game.get_game_state(player_id)
-        }, room=request.sid)
+        # IMPORTANT: Broadcast the new game state so phase changes to STAGE1_CHALLENGING
+        socketio.emit('game_state_update', {
+            'game_state': game.get_game_state()
+        }, room=game_code)
     else:
         emit('error', {'message': result.get('message', 'Failed to replace card')})
 

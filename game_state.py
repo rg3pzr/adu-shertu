@@ -195,55 +195,57 @@ class AduShertuGame:
         self._identify_jack_trump_team()
     
     def attempt_trump_call(self, player_index: int, suit: Suit) -> Dict:
-        """
-        Attempt to call trump with a 9 of the specified suit.
-        Returns dict with success status and any required actions.
-        """
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
             return {"success": False, "message": "Not in trump calling phase"}
         
-        # NOTE: Trump calling begins at the person to the left of the dealer.
-        # The index should be the person *after* the dealer.
         if player_index != self.trump_calling_index:
             return {"success": False, "message": "Not your turn to call trump"}
         
         player = self.players[player_index]
         
-        # Check if player has the 9 of the specified suit
-        has_nine = any(c.rank == Rank.NINE and c.suit == suit for c in player["cards"])
-        if not has_nine:
+        # 1. Find the specific 9 being used to call trump
+        trump_nine = next((c for c in player["cards"] if c.rank == Rank.NINE and c.suit == suit), None)
+        if not trump_nine:
             return {"success": False, "message": "You don't have the 9 of that suit"}
         
-        # Check if other card is same suit
-        other_cards = [c for c in player["cards"] if not (c.rank == Rank.NINE and c.suit == suit)]
-        same_suit_card = next((c for c in other_cards if c.suit == suit), None)
-        
-        if same_suit_card:
-            # Must show and replace
-            return {
-                "success": False,
-                "requires_replacement": True,
-                "card_to_replace": same_suit_card.to_dict(),
-                "message": "Other card is same suit, must replace"
-            }
-        
-        # Valid trump call
+        # 2. Lock in the trump call immediately
         self.trump_suit = suit
         self.trump_caller_index = player_index
+
+        # 3. Find the "Other" card (the one that isn't the 9 used to call)
+        # We remove one instance of the trump 9 to see what's left
+        temp_cards = player["cards"].copy()
+        temp_cards.remove(trump_nine)
+        other_card = temp_cards[0] # In Stage 1, there is only 1 other card
+        
+        if other_card.suit == suit:
+            # DO NOT move to challenging yet. Stay in a state that awaits replacement.
+            # We don't deal Stage 2 yet because the caller's hand is invalid.
+            self.trump_suit = suit # Set this so no one else can call
+            self.trump_caller_index = player_index
+            return {
+                "success": True, # It's a successful 'start' to a call
+                "requires_replacement": True,
+                "card_to_replace": other_card.to_dict(),
+                "trump_suit": suit.value,
+                "message": "Other card is same suit, must show and replace"
+            }
+        
+        # 4. Valid call with no replacement needed
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu
         
-        # Deal Stage 2 cards immediately
-        self._deal_stage2()
-        
+        # Transition the game state
         self.phase = GamePhase.STAGE1_CHALLENGING
         
         return {
             "success": True,
+            "requires_replacement": False,
             "trump_suit": suit.value,
             "base_okalu": self.base_okalu,
             "message": f"Trump called: {suit.value}"
         }
+            
     
     def attempt_joint_call(self, player_index: int) -> Dict: # MODIFIED: Removed suit arguments
         """Attempt to call joint with two 9s."""
@@ -333,43 +335,63 @@ class AduShertuGame:
         return {"success": True, "next_player": self.trump_calling_index}
     
     def replace_same_suit_card(self, player_index: int, suit: Suit) -> Dict:
-        """Replace a card that's the same suit as the trump 9."""
+        """
+        Replace a card that's the same suit as the trump 9.
+        This repeats until a non-trump card is found, then moves the game to Stage 1 Challenging.
+        """
         player = self.players[player_index]
         
-        # Find and remove the same-suit card
-        same_suit_card = next((c for c in player["cards"] if c.suit == suit and c.rank != Rank.NINE), None)
-        if not same_suit_card:
-            return {"success": False, "message": "No same-suit card found"}
+        # 1. Find the card that matches the trump suit (and isn't the 9 used to call)
+        # We copy the cards and remove one 9 of the trump suit to find the 'other' card
+        temp_cards = player["cards"].copy()
+        trump_nine = next((c for c in temp_cards if c.rank == Rank.NINE and c.suit == suit), None)
+        if trump_nine:
+            temp_cards.remove(trump_nine)
         
+        same_suit_card = temp_cards[0] if temp_cards else None
+        
+        if not same_suit_card or same_suit_card.suit != suit:
+            return {"success": False, "message": "No same-suit card found to replace"}
+        
+        # Remove the illegal card from the real player hand
         player["cards"].remove(same_suit_card)
         self.discarded_cards.append(same_suit_card)
         
-        # Draw replacement cards until we get a different suit
+        # 2. Draw replacement cards until we get a different suit
         replacements_shown = []
+        new_card = None
+        
         while True:
             if not self.deck:
-                return {"success": False, "message": "Deck empty"}
+                return {"success": False, "message": "Deck empty during replacement"}
             
             new_card = self.deck.pop()
             replacements_shown.append(new_card)
             
+            # If the new card is NOT the trump suit, the player keeps it
             if new_card.suit != suit:
                 player["cards"].append(new_card)
                 break
             else:
-                # Card is same suit, discard it and draw another
+                # New card is ALSO trump suit, show it to everyone and discard
                 self.discarded_cards.append(new_card)
         
-        # Move turn to the next player
-        self.trump_calling_index = (player_index + 1) % 6
+        # 3. TRANSITION THE GAME
+        # The caller now has a legal 2-card hand. Now we finalize the call.
+        self.base_okalu = self._calculate_base_okalu(player_index)
+        self.current_game_okalu = self.base_okalu
+        
+        # Move to Challenging Phase
+        self.phase = GamePhase.STAGE1_CHALLENGING
         
         return {
             "success": True,
             "discarded": same_suit_card.to_dict(),
             "replacements_shown": [c.to_dict() for c in replacements_shown],
-            "final_card": new_card.to_dict()
+            "final_card": new_card.to_dict(),
+            "game_state": self.get_game_state() # Include state so UI updates to Challenging
         }
-    
+
     def _calculate_base_okalu(self, trump_caller_index: int) -> int:
         """Calculate base okalu based on trump caller's distance from dealer."""
         # Calculate distance from dealer: (caller_index - dealer_index) % 6
