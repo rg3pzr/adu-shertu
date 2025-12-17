@@ -833,3 +833,23 @@ input[type="text"]:focus {
 .played-card.diamonds { color: var(--diamonds-color); }
 .played-card.clubs { color: var(--clubs-color); }
 .played-card.spades { color: var(--spades-color); }
+
+/* FORCE VISIBILITY - ADD TO BOTTOM OF STYLE.CSS */
+.card, .small-card, .played-card {
+    background-color: white !important;
+    border: 2px solid #000 !important; /* Thick black border */
+    color: black !important;           /* Default text color black */
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Ensure the suits specifically have color */
+.hearts, .diamonds { color: red !important; }
+.clubs, .spades { color: black !important; }
+
+/* If the suit is a div inside the card, ensure it has dimensions */
+.card-suit, .card-rank {
+    display: block !important;
+    min-height: 10px;
+    min-width: 10px;
+}
