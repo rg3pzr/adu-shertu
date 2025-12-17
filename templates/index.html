@@ -213,5 +213,29 @@
     </div>
 
     <script src="{{ url_for('static', filename='game.js') }}"></script>
+    
+    {% if developer_mode %}
+    <script>
+        // Use Flask template variables to initialize the JS state,
+        // since the SocketIO join/start events are bypassed.
+        
+        const initialGameState = {{ game_state | tojson | safe}};
+        
+        // Set global gameState variables
+        gameState.myPlayerId = "{{ current_player_id }}";
+        gameState.myTeam = initialGameState.my_team;
+        gameState.gameCode = initialGameState.game_code;
+        gameState.myCards = initialGameState.my_cards || []; // This grabs your card data
+        
+        // Update all UI components (scores, phase, player info)
+        updateGameState(initialGameState); 
+        
+        // Render the active player's hand
+        renderMyCards(); 
+        
+        // Ensure we are on the game screen (redundant but safe)
+        showScreen('game');
+    </script>
+    {% endif %}
 </body>
 </html>
