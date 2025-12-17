@@ -25,7 +25,7 @@ DEVELOPER_MODE = os.environ.get('DEVELOPER_MODE', 'False').lower() in ('true', '
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # Store active games: {game_code: AduShertuGame}
 active_games: Dict[str, AduShertuGame] = {}
