@@ -196,6 +196,7 @@ function handleCardsUpdated(data) {
     gameState.myCards = data.game_state.my_cards || [];
     renderMyCards();
     updateGameState(data.game_state);
+    renderMyCards();
 }
 
 function handleCardReplacementRequired(data) {
