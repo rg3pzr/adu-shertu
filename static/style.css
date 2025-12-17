@@ -41,8 +41,6 @@ body {
 .screen.active {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
 }
 
 .container {
@@ -52,6 +50,7 @@ body {
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
     max-width: 500px;
     width: 100%;
+    margin: auto;
 }
 
 /* Typography */
@@ -64,45 +63,6 @@ h1 {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-}
-
-h2 {
-    font-size: 1.75rem;
-    font-weight: 700;
-    margin-bottom: 1.5rem;
-    text-align: center;
-}
-
-h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-}
-
-.subtitle {
-    text-align: center;
-    color: var(--text-secondary);
-    margin-bottom: 2rem;
-}
-
-/* Form Elements */
-.form-group {
-    margin-bottom: 1.5rem;
-}
-
-input[type="text"] {
-    width: 100%;
-    padding: 0.875rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: 0.5rem;
-    font-size: 1rem;
-    transition: all 0.2s;
-}
-
-input[type="text"]:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
 /* Buttons */
@@ -118,776 +78,178 @@ input[type="text"]:focus {
     text-align: center;
 }
 
-.btn:active {
-    transform: scale(0.98);
-}
+.btn-primary { background: var(--primary-color); color: white; }
+.btn-secondary { background: var(--secondary-color); color: white; }
+.btn-accent { background: var(--accent-color); color: white; }
+.btn-danger { background: var(--danger-color); color: white; }
+.btn-challenge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; flex: 1; }
 
-.btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.btn-primary {
-    background: var(--primary-color);
-    color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-    background: #1d4ed8;
-}
-
-.btn-secondary {
-    background: var(--secondary-color);
-    color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-    background: #475569;
-}
-
-.btn-accent {
-    background: var(--accent-color);
-    color: white;
-}
-
-.btn-accent:hover:not(:disabled) {
-    background: #d97706;
-}
-
-.btn-danger {
-    background: var(--danger-color);
-    color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-    background: #dc2626;
-}
-
-.btn-challenge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    margin: 0.25rem;
-    flex: 1;
-    min-width: 100px;
-}
-
-.btn-icon {
-    background: transparent;
-    border: none;
-    font-size: 1.25rem;
-    cursor: pointer;
-    padding: 0.5rem;
-}
-
-.button-group {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-/* Game Code Display */
-.game-code-display {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-    padding: 1rem;
-    background: var(--bg-light);
-    border-radius: 0.5rem;
-}
-
-.code {
-    font-size: 2rem;
-    font-weight: 800;
-    letter-spacing: 0.25rem;
-    color: var(--primary-color);
-    font-family: 'Courier New', monospace;
-}
-
-/* Players List */
-.players-waiting {
-    margin-bottom: 2rem;
-}
-
-.players-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.player-card {
-    padding: 1rem;
-    background: var(--bg-light);
-    border-radius: 0.5rem;
-    text-align: center;
-    border: 2px solid transparent;
-}
-
-.player-card.team-0 {
-    border-color: #3b82f6;
-}
-
-.player-card.team-1 {
-    border-color: #ef4444;
-}
-
-.info-text {
-    text-align: center;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-    margin-top: 1rem;
-}
-
-/* Game Screen */
-#game-screen {
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    overflow: hidden;
-}
-
+/* Game Header */
 .game-header {
     background: var(--card-bg);
     padding: 1rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 20;
 }
 
 .okalu-display {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
 }
 
-.team-okalu, .current-game-okalu {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-}
+.okalu-value { font-size: 1.5rem; font-weight: 800; }
+.team-0 .okalu-value { color: #3b82f6; }
+.team-1 .okalu-value { color: #ef4444; }
 
-.team-label, .game-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.okalu-value {
-    font-size: 1.5rem;
-    font-weight: 800;
-}
-
-.team-0 .okalu-value {
-    color: #3b82f6;
-}
-
-.team-1 .okalu-value {
-    color: #ef4444;
-}
-
-.current-game-okalu .okalu-value {
-    color: var(--accent-color);
-}
-
-.trump-display {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 1rem;
-}
-
-.trump-suit {
-    font-size: 2rem;
-    width: 3rem;
-    height: 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-light);
-    border-radius: 0.5rem;
-}
-
-.phase-text {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
-    font-weight: 600;
-}
-
-/* Game Table */
+/* Game Table Layout */
 .game-table {
     flex: 1;
     position: relative;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    overflow: hidden;
+    width: 100%;
+    min-height: 450px;
+    background: rgba(0,0,0,0.05);
 }
 
-.player-position {
-    position: absolute;
-}
-
-.pos-top {
-    top: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
-.pos-top-left {
-    top: 15%;
-    left: 5%;
-}
-
-.pos-top-right {
-    top: 15%;
-    right: 5%;
-}
-
-.pos-left {
-    top: 50%;
-    left: 5%;
-    transform: translateY(-50%);
-}
-
-.pos-right {
-    top: 50%;
-    right: 5%;
-    transform: translateY(-50%);
-}
-
-.pos-bottom {
-    bottom: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 90%;
-    max-width: 600px;
-}
+.player-position { position: absolute; z-index: 10; }
+.pos-top { top: 5%; left: 50%; transform: translateX(-50%); }
+.pos-top-left { top: 15%; left: 5%; }
+.pos-top-right { top: 15%; right: 5%; }
+.pos-left { top: 45%; left: 5%; transform: translateY(-50%); }
+.pos-right { top: 45%; right: 5%; transform: translateY(-50%); }
 
 .player-info {
     background: var(--card-bg);
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    min-width: 120px;
+    min-width: 110px;
+    text-align: center;
 }
 
-.player-info.active {
-    box-shadow: 0 0 0 3px var(--accent-color);
-}
+.player-info.active { outline: 3px solid var(--accent-color); }
 
-.player-info.dealer::before {
-    content: "🎴 ";
-}
-
-.player-name {
-    font-weight: 600;
-    font-size: 0.875rem;
-    display: block;
-    margin-bottom: 0.25rem;
-}
-
-.player-cards {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.card-count {
-    font-weight: 700;
-    color: var(--primary-color);
-}
-
-/* Playing Area */
+/* Playing Area (Center) */
 .playing-area {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 300px;
-    height: 300px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    text-align: center;
 }
 
 .played-cards {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 1rem;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 15px;
+    min-height: 90px;
 }
 
 .played-card {
     width: 60px;
     height: 84px;
     background: white;
-    border-radius: 0.375rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 
-.score-display {
-    display: flex;
-    justify-content: space-around;
+/* Bottom Player Hand Area (Corrected Stacking) */
+.pos-bottom {
+    position: relative;
     width: 100%;
-    padding: 1rem;
-    background: var(--card-bg);
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.team-score {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.team-score .label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-}
-
-.team-score span:last-child {
-    font-size: 1.25rem;
-    font-weight: 800;
-    color: var(--primary-color);
-}
-
-.hand-info {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    font-weight: 600;
-    color: var(--text-secondary);
-}
-
-/* Your Hand */
-.your-hand {
-    display: flex;
-    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 15px 0;
+    border-top: 2px solid rgba(255,255,255,0.1);
+    z-index: 30;
 }
 
 .your-cards-container {
     display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    gap: 10px;
     justify-content: center;
+    flex-wrap: wrap;
+    min-height: 100px;
 }
 
+/* Card Visuals */
 .card {
     width: 70px;
-    height: 98px;
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
+    height: 100px;
+    background: white !important;
+    color: black !important;
+    border-radius: 8px;
+    border: 2px solid #000 !important;
+    display: flex !important;
     flex-direction: column;
     align-items: center;
     justify-content: space-between;
-    padding: 0.5rem;
-    border: 3px solid transparent;
+    padding: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
 }
 
-.card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.2);
+.card:hover { transform: translateY(-10px); }
+.card.selected { border-color: var(--accent-color) !important; transform: translateY(-15px); }
+
+.card-rank { font-size: 1.2rem; font-weight: 800; }
+.card-suit { font-size: 1.8rem; }
+
+/* Opponent Hand (Dev Mode) */
+.opponent-hand {
+    display: flex;
+    gap: 2px;
+    margin-top: 5px;
+    justify-content: center;
 }
 
-.card.selected {
-    border-color: var(--accent-color);
-    transform: translateY(-15px);
-}
-
-.card-rank {
-    font-size: 1.5rem;
-    font-weight: 800;
-}
-
-.card-suit {
-    font-size: 2rem;
-}
-
-/* Card Specific Colors (Existing in provided code) */
-.card.hearts .card-rank,
-.card.hearts .card-suit {
-    color: var(--hearts-color);
-}
-
-.card.diamonds .card-rank,
-.card.diamonds .card-suit {
-    color: var(--diamonds-color);
-}
-
-.card.clubs .card-rank,
-.card.clubs .card-suit {
-    color: var(--clubs-color);
-}
-
-.card.spades .card-rank,
-.card.spades .card-suit {
-    color: var(--spades-color);
+.small-card {
+    width: 25px;
+    height: 38px;
+    background: white !important;
+    color: black !important;
+    border: 1px solid #000 !important;
+    border-radius: 3px;
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
 }
 
 /* Action Panel */
 .action-panel {
     background: var(--card-bg);
     padding: 1rem;
-    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
-    max-height: 200px;
-    overflow-y: auto;
+    z-index: 40;
+    border-top: 1px solid var(--border-color);
 }
 
-.action-group {
-    margin-bottom: 1rem;
-}
+.suit-buttons { display: flex; gap: 10px; justify-content: center; margin: 10px 0; }
+.btn-suit { font-size: 2rem; width: 60px; height: 60px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; }
 
-.action-group h3 {
-    font-size: 1rem;
-    margin-bottom: 0.75rem;
-    text-align: center;
-}
+/* Suit Colors */
+.hearts, .diamonds { color: var(--hearts-color) !important; }
+.clubs, .spades { color: #000000 !important; }
 
-.suit-buttons {
-    display: flex;
-    gap: 0.5rem;
-    justify-content: center;
-    margin-bottom: 0.75rem;
-}
-
-.btn-suit {
-    width: 60px;
-    height: 60px;
-    border: 3px solid var(--border-color);
-    border-radius: 0.5rem;
-    background: white;
-    font-size: 2rem;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.btn-suit:hover {
-    transform: scale(1.1);
-    border-color: var(--primary-color);
-}
-
-.btn-suit.hearts {
-    color: var(--hearts-color);
-}
-
-.btn-suit.diamonds {
-    color: var(--diamonds-color);
-}
-
-.btn-suit.clubs {
-    color: var(--clubs-color);
-}
-
-.btn-suit.spades {
-    color: var(--spades-color);
-}
-
-.challenge-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    justify-content: center;
-}
-
-/* Status Messages */
-.status-messages {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    max-width: 300px;
-    z-index: 1000;
-}
-
-.status-message {
-    background: var(--card-bg);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin-bottom: 0.5rem;
-    border-left: 4px solid var(--primary-color);
-    animation: slideIn 0.3s ease;
-}
-
-.status-message.success {
-    border-left-color: var(--success-color);
-}
-
-.status-message.error {
-    border-left-color: var(--danger-color);
-}
-
-.status-message.warning {
-    border-left-color: var(--accent-color);
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* Modal */
-.modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.75);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 2000;
-}
-
-.modal.hidden {
-    display: none;
-}
-
-.modal-content {
-    background: var(--card-bg);
-    padding: 2rem;
-    border-radius: 1rem;
-    max-width: 500px;
-    width: 90%;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* Utility Classes */
-.hidden {
-    display: none !important;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .game-table {
-        font-size: 0.875rem;
-    }
-    
-    .player-info {
-        min-width: 100px;
-        padding: 0.5rem 0.75rem;
-    }
-    
-    .playing-area {
-        width: 250px;
-        height: 250px;
-    }
-    
-    .played-card {
-        width: 50px;
-        height: 70px;
-        font-size: 1.25rem;
-    }
-    
-    .card {
-        width: 60px;
-        height: 84px;
-    }
-    
-    .okalu-value {
-        font-size: 1.25rem;
-    }
-    
-    .btn-suit {
-        width: 50px;
-        height: 50px;
-    }
-}
-
-@media (max-width: 480px) {
-    h1 {
-        font-size: 2rem;
-    }
-    
-    .container {
-        padding: 1.5rem;
-    }
-    
-    .card {
-        width: 50px;
-        height: 70px;
-    }
-    
-    .card-rank {
-        font-size: 1.25rem;
-    }
-    
-    .card-suit {
-        font-size: 1.5rem;
-    }
-}
-
-/* =======================================
-   == DEVELOPER MODE STYLES (NEW) ==
-   ======================================= */
-
+/* Developer Mode Info Box */
 #developer-mode-info {
     border: 2px solid red;
     padding: 10px;
-    margin: 10px auto;
-    max-width: 800px;
-    background-color: #ffeaea; 
+    background-color: #ffeaea;
     text-align: center;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
     font-family: monospace;
-    color: #cc0000;
-    z-index: 1000; 
-    position: relative;
-}
-
-#developer-mode-info h2 {
-    margin-top: 0;
-    font-size: 1.2em;
-}
-
-#developer-mode-info button,
-#developer-mode-info select,
-#developer-mode-info a {
-    margin: 0 5px;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9em;
-}
-
-/* Player Status Styles (for dev mode) */
-.player-card.disconnected {
-    opacity: 0.5;
-    background-color: #f0f0f0;
-    border-color: #ccc;
-    font-style: italic;
-}
-
-/* Container for opponent cards in Dev Mode */
-.opponent-hand {
-    display: flex;
-    gap: 4px;
-    margin-top: 8px;
-    justify-content: center;
-    flex-wrap: wrap;
-}
-
-/* Specific styling for the small debug cards */
-.small-card {
-    width: 35px !important;   /* Force smaller size */
-    height: 50px !important;
-    min-width: 35px;
-    background: #ffffff !important;
-    border: 1px solid #333 !important; /* Dark border to make it visible */
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
     z-index: 100;
 }
 
-.small-card .card-rank {
-    font-size: 0.7rem !important;
-    font-weight: bold;
-}
+/* Utility */
+.hidden { display: none !important; }
 
-.small-card .card-suit {
-    font-size: 1rem !important;
-}
-
-/* Ensure your main hand cards have a visible border */
-.card {
-    border: 1px solid #000 !important;
-}
-
-/* =======================================
-   == GLOBAL SUIT COLORS (NEW) ==
-   ======================================= */
-/* These ensure elements not named 'card.hearts' (like the trump display or played card text) get color */
-
-.hearts { color: var(--hearts-color); }
-.diamonds { color: var(--diamonds-color); }
-.clubs { color: var(--clubs-color); }
-.spades { color: var(--spades-color); }
-
-/* Ensure played cards have color */
-.played-card.hearts { color: var(--hearts-color); }
-.played-card.diamonds { color: var(--diamonds-color); }
-.played-card.clubs { color: var(--clubs-color); }
-.played-card.spades { color: var(--spades-color); }
-
-/* FORCE VISIBILITY - ADD TO BOTTOM OF STYLE.CSS */
-.card, .small-card, .played-card {
-    background-color: white !important;
-    border: 2px solid #000 !important; /* Thick black border */
-    color: black !important;           /* Default text color black */
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Ensure the suits specifically have color */
-.hearts, .diamonds { color: red !important; }
-.clubs, .spades { color: black !important; }
-
-/* If the suit is a div inside the card, ensure it has dimensions */
-.card-suit, .card-rank {
-    display: block !important;
-    min-height: 10px;
-    min-width: 10px;
-}
-
-/* --- CRITICAL VISIBILITY OVERRIDE --- */
-
-/* Ensure the hand container is actually tall enough to be seen */
-.your-cards-container {
-    display: flex !important;
-    min-height: 120px !important;
-    padding: 10px !important;
-    visibility: visible !important;
-    background: rgba(255, 255, 255, 0.1); /* Faint highlight of the area */
-}
-
-/* Force cards to have a physical shape and visible colors */
-.card, .small-card, .played-card {
-    background-color: white !important;
-    border: 2px solid black !important; /* Thick black border */
-    color: black !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    box-shadow: 3px 3px 5px rgba(0,0,0,0.5) !important;
-}
-
-/* Ensure Rank and Suit text are visible inside the cards */
-.card-rank, .card-suit {
-    color: inherit; /* Fallback to black */
-    display: block !important;
-    visibility: visible !important;
-}
-
-/* Force colors for suits */
-.hearts, .diamonds {
-    color: #ef4444 !important; /* Red */
-}
-
-.clubs, .spades {
-    color: #000000 !important; /* Black */
-}
+/* Final Emergency Overrides */
+.card-suit, .card-rank { visibility: visible !important; opacity: 1 !important; display: block !important; }
