@@ -226,6 +226,8 @@
         gameState.myTeam = initialGameState.my_team;
         gameState.gameCode = initialGameState.game_code;
         gameState.myCards = initialGameState.my_cards || []; // This grabs your card data
+
+        gameState.game_state = initialGameState;
         
         // Update all UI components (scores, phase, player info)
         updateGameState(initialGameState); 
