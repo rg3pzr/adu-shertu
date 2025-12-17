@@ -572,6 +572,11 @@ function hideChallengeResponseActions() {
 function renderMyCards() {
     const container = document.getElementById('your-cards');
     container.innerHTML = '';
+
+    const suitSymbol = card.suit || 'X';
+    const rankText = card.rank || '?';
+
+    
     
     gameState.myCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
@@ -585,12 +590,14 @@ function renderMyCards() {
         }
         
         // MODIFIED: Use Unicode symbols (♥, ♦, ♣, ♠) for visual cards
-        const suitSymbol = card.suit;
         
+        const suitSymbol = card.suit || 'X';
+        const rankText = card.rank || '?';
+
         cardEl.innerHTML = `
-            <div class="card-rank">${card.rank}</div>
+            <div class="card-rank">${rankText}</div>
             <div class="card-suit ${suitClass}">${suitSymbol}</div>
-            <div class="card-rank">${card.rank}</div>
+            <div class="card-rank">${rankText}</div>
         `;
         
         cardEl.addEventListener('click', () => handleCardClick(index));
