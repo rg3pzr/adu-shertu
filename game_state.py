@@ -100,6 +100,8 @@ class AduShertuGame:
         self.trump_calling_index = 0  # Track whose turn to call trump
 
         self.is_dev_game = is_dev_game
+
+        self.ready_players = [] # List of player_ids who clicked 'Continue'
         
     def add_player(self, player_id: str, player_name: str) -> bool:
         """Add a player to the game. Returns True if successful."""
@@ -183,16 +185,21 @@ class AduShertuGame:
                     self.players[player_index]["cards"].append(self.deck.pop())
     
     def _deal_stage2(self):
-        """Deal remaining 2 cards to each player."""
-        # Note: This is called *after* Stage 1 trump call or Joint is called.
-        for i in range(6):
+        """Deal remaining 2 cards to each player to reach a total of 4."""
+        # Start dealing from the person after the dealer
+        for i in range(1, 7):
             player_index = (self.dealer_index + i) % 6
-            for _ in range(2):
+            # Deal exactly enough to reach 4 cards
+            cards_needed = 4 - len(self.players[player_index]["cards"])
+            for _ in range(cards_needed):
                 if self.deck:
                     self.players[player_index]["cards"].append(self.deck.pop())
-        
-        # Identify jack trump team (if trump is already set)
+    
+        # Identify jack trump team
         self._identify_jack_trump_team()
+        
+        # IMPORTANT: Transition the phase so the UI updates
+        self.phase = GamePhase.STAGE2_CHALLENGING
     
     def attempt_trump_call(self, player_index: int, suit: Suit) -> Dict:
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
@@ -544,6 +551,20 @@ class AduShertuGame:
         
         return {"success": True}
     
+    def toggle_ready_stage2(self, player_id: str) -> bool:
+        """Tracks player readiness. Transitions phase and deals cards when 6/6 ready."""
+        if player_id not in self.ready_players:
+            self.ready_players.append(player_id)
+            
+        if len(self.ready_players) == 6:
+            # THIS IS WHERE THE PROCEED LOGIC LIVES NOW
+            self._deal_stage2()
+            self.phase = GamePhase.STAGE2_CHALLENGING
+            self.ready_players = [] # Reset for next time
+            return True # Signal to app.py that we officially proceeded
+            
+        return False # Not everyone is ready yet
+
     def select_trump_after_joint(self, player_index: int, suit: Suit) -> Dict:
         """Select trump suit after calling joint."""
         if self.phase != GamePhase.STAGE2_TRUMP_SELECTION:
@@ -847,6 +868,7 @@ class AduShertuGame:
         state = {
             "game_code": self.game_code,
             "phase": self.phase.value,
+            "ready_players": self.ready_players,
             "players": [
                 {
                     "id": p["id"],

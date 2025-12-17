@@ -214,8 +214,9 @@ function handleCardReplaced(data) {
 
 function handleStage2Started(data) {
     gameState.myCards = data.game_state.my_cards || [];
-    renderMyCards();
     updateGameState(data.game_state);
+    renderMyCards();
+
 }
 
 function handleTrumpSelectedJoint(data) {
@@ -305,6 +306,47 @@ function updateGameState(state) {
         trumpEl.innerHTML = `<span class="${getSuitClass(state.trump_suit)}">${state.trump_suit}</span>`;
     } else { trumpEl.textContent = '?'; }
 
+    // === NEW: PERSISTENT TRUMP INFO ===
+    const trumpBox = document.getElementById('active-trump-info');
+    if (state.trump_suit && state.trump_caller_index !== null) {
+        trumpBox.classList.remove('hidden');
+        document.getElementById('display-trump-suit').innerHTML = 
+            `<span class="${getSuitClass(state.trump_suit)}">${state.trump_suit}</span>`;
+        document.getElementById('display-trump-caller').textContent = 
+            state.players[state.trump_caller_index].name;
+    } else {
+        trumpBox.classList.add('hidden');
+    }
+
+    // === NEW: PERSISTENT CHALLENGE INFO ===
+    const challengeBox = document.getElementById('active-challenge-info');
+    if (state.challenge_type) {
+        challengeBox.classList.remove('hidden');
+        document.getElementById('display-challenge-type').textContent = 
+            state.challenge_type.toUpperCase();
+    } else {
+        challengeBox.classList.add('hidden');
+    }
+
+    // === NEW: CONSENSUS READY DOTS ===
+    const readyContainer = document.getElementById('ready-status-container');
+    if (state.phase === 'stage1_challenging' || state.phase === 'stage2_challenging') {
+        readyContainer.classList.remove('hidden');
+        const list = document.getElementById('ready-players-list');
+        list.innerHTML = '';
+        
+        state.players.forEach(p => {
+            const dot = document.createElement('div');
+            // Check if player's ID is in the ready_players list from server
+            const isReady = state.ready_players && state.ready_players.includes(p.id);
+            dot.className = `ready-dot ${isReady ? 'done' : ''}`;
+            dot.title = p.name;
+            list.appendChild(dot);
+        });
+    } else {
+        readyContainer.classList.add('hidden');
+    }
+
     document.getElementById('game-phase').textContent = getPhaseText(state.phase);
     document.getElementById('team-0-score').textContent = state.points_scored[0];
     document.getElementById('team-1-score').textContent = state.points_scored[1];
@@ -327,6 +369,8 @@ function updateGameState(state) {
 function getPhaseText(phase) {
     const phases = {
         'waiting': 'Waiting...', 'stage1_trump_calling': 'Calling trump...',
+        'stage1_challenging': 'Stage 1: Challenges & Ready Check', // Updated
+        'stage2_challenging': 'Stage 2: Play or Challenge',        // Updated
         'stage1_challenging': 'Stage 1 Challenges', 'playing_hand': 'Playing...',
         'stage2_trump_selection': 'Select Trump (Joint)'
     };

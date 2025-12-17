@@ -452,7 +452,7 @@ def handle_respond_challenge(data):
 
 @socketio.on('proceed_stage2')
 def handle_proceed_stage2(data):
-    """Handle proceeding from stage 1 to stage 2."""
+    """Handle the consensus-based proceeding to stage 2."""
     if request.sid not in player_connections:
         emit('error', {'message': 'Not in a game'})
         return
@@ -460,20 +460,23 @@ def handle_proceed_stage2(data):
     game_code, player_id = player_connections[request.sid]
     game = active_games[game_code]
     
-    result = game.proceed_to_stage2()
+    # toggle_ready_stage2 will return True only when the 6th player joins the list
+    all_ready = game.toggle_ready_stage2(player_id)
     
-    if result['success']:
-        # Send updated cards to all players
-        for player in game.players:
-            # Again, assuming a basic broadcast, actual game logic needs a SID map
-            pass 
+    # Always broadcast the update so everyone sees the dots turn green
+    socketio.emit('game_state_update', {
+        'game_state': game.get_game_state()
+    }, room=game_code)
+    
+    if all_ready:
+        # Now that everyone is ready, the game_state internally dealt the cards.
+        # We broadcast stage2_started so the frontend knows to refresh hands.
+        socketio.emit('stage2_started', {
+            'game_state': game.get_game_state() 
+        }, room=game_code)
         
-        socketio.emit('stage2_started', { # CHANGE: Emit stage2_started instead of game_state_update
-            'game_state': game.get_game_state(player_id)
-        }, room=game_code) # CHANGE: Emit to room, not just request.sid
-
-    else:
-        emit('error', {'message': result.get('message', 'Failed to proceed')})
+        # Log it for the dev console
+        print(f"DEBUG: All players ready in {game_code}. Stage 2 started.")
 
 @socketio.on('select_trump_joint')
 def handle_select_trump_joint(data):

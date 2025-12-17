@@ -72,22 +72,22 @@
     <div id="game-screen" class="screen">
         <div class="game-header">
             <div class="okalu-display">
-                <div class="team-okalu team-0">
-                    <span class="team-label">Team 1</span>
-                    <span class="okalu-value" id="team-0-okalu">0</span>
                 </div>
-                <div class="current-game-okalu">
-                    <span class="game-label">Current Game</span>
-                    <span class="okalu-value" id="current-okalu">0</span>
-                </div>
-                <div class="team-okalu team-1">
-                    <span class="team-label">Team 2</span>
-                    <span class="okalu-value" id="team-1-okalu">0</span>
-                </div>
-            </div>
+            
             <div class="trump-display">
                 <span id="trump-suit" class="trump-suit">?</span>
                 <span id="game-phase" class="phase-text">Waiting...</span>
+            </div>
+
+            <div class="game-info-bar">
+                <div id="active-trump-info" class="info-pill hidden">
+                    <span class="pill-label">Trump:</span>
+                    <span id="display-trump-suit"></span> by <span id="display-trump-caller"></span>
+                </div>
+                <div id="active-challenge-info" class="info-pill hidden">
+                    <span class="pill-label">Challenge:</span>
+                    <span id="display-challenge-type"></span>
+                </div>
             </div>
         </div>
 
@@ -128,12 +128,18 @@
             </div>
             <div id="challenge-actions" class="action-group hidden">
                 <h3>Challenge</h3>
-                <div class="challenge-buttons">
-                    <button id="adu-btn" class="btn btn-challenge">Adu</button>
-                    <button id="shertu-btn" class="btn btn-challenge">Shertu</button>
-                    <button id="double-btn" class="btn btn-challenge">Double</button>
-                    <button id="shubble-btn" class="btn btn-challenge">Shubble</button>
-                </div>
+                <h3>Challenge</h3>
+            <div class="challenge-buttons">
+                <button id="adu-btn" class="btn btn-challenge">Adu</button>
+                <button id="shertu-btn" class="btn btn-challenge">Shertu</button>
+                <button id="double-btn" class="btn btn-challenge">Double</button>
+                <button id="shubble-btn" class="btn btn-challenge">Shubble</button>
+            </div>
+
+            <div id="ready-status-container" class="hidden" style="margin-top: 15px; text-align: center;">
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Waiting for everyone to continue...</p>
+                <div id="ready-players-list" class="ready-grid"></div>
+            </div>
                 <button id="proceed-stage2-btn" class="btn btn-primary hidden">Continue to Stage 2</button>
             </div>
             <div id="challenge-response-actions" class="action-group hidden">
