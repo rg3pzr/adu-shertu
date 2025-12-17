@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Adu Shertu - Card Game</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Welcome Screen -->
+    <div id="welcome-screen" class="screen active">
+        <div class="container">
+            <h1>🃏 Adu Shertu</h1>
+            <p class="subtitle">Multiplayer Card Game</p>
+            
+            <div class="form-group">
+                <input type="text" id="player-name" placeholder="Enter your name" maxlength="20">
+            </div>
+            
+            <div class="button-group">
+                <button id="create-game-btn" class="btn btn-primary">Create New Game</button>
+                <button id="join-game-btn" class="btn btn-secondary">Join Existing Game</button>
+            </div>
+            
+            <div id="join-game-form" class="hidden">
+                <div class="form-group">
+                    <input type="text" id="game-code-input" placeholder="Enter 6-digit game code" maxlength="6">
+                </div>
+                <button id="join-game-submit" class="btn btn-primary">Join Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lobby Screen -->
+    <div id="lobby-screen" class="screen">
+        <div class="container">
+            <h2>Game Lobby</h2>
+            <div class="game-code-display">
+                <span>Game Code:</span>
+                <span id="game-code" class="code">------</span>
+                <button id="copy-code-btn" class="btn-icon" title="Copy code">📋</button>
+            </div>
+            
+            <div class="players-waiting">
+                <h3>Players (<span id="player-count">0</span>/6)</h3>
+                <div id="players-list" class="players-grid"></div>
+            </div>
+            
+            <button id="start-game-btn" class="btn btn-primary" disabled>Start Game</button>
+            <p class="info-text">Waiting for 6 players...</p>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- Header -->
+        <div class="game-header">
+            <div class="okalu-display">
+                <div class="team-okalu team-0">
+                    <span class="team-label">Team 1</span>
+                    <span class="okalu-value" id="team-0-okalu">0</span>
+                </div>
+                <div class="current-game-okalu">
+                    <span class="game-label">Current Game</span>
+                    <span class="okalu-value" id="current-okalu">0</span>
+                </div>
+                <div class="team-okalu team-1">
+                    <span class="team-label">Team 2</span>
+                    <span class="okalu-value" id="team-1-okalu">0</span>
+                </div>
+            </div>
+            
+            <div class="trump-display">
+                <span id="trump-suit" class="trump-suit">?</span>
+                <span id="game-phase" class="phase-text">Waiting...</span>
+            </div>
+        </div>
+
+        <!-- Game Table -->
+        <div class="game-table">
+            <!-- Opponent positions -->
+            <div class="player-position pos-top">
+                <div class="player-info" id="player-3">
+                    <span class="player-name">Player 4</span>
+                    <div class="player-cards"><span class="card-count">4</span> cards</div>
+                </div>
+            </div>
+            
+            <div class="player-position pos-top-left">
+                <div class="player-info" id="player-2">
+                    <span class="player-name">Player 3</span>
+                    <div class="player-cards"><span class="card-count">4</span> cards</div>
+                </div>
+            </div>
+            
+            <div class="player-position pos-top-right">
+                <div class="player-info" id="player-4">
+                    <span class="player-name">Player 5</span>
+                    <div class="player-cards"><span class="card-count">4</span> cards</div>
+                </div>
+            </div>
+            
+            <div class="player-position pos-left">
+                <div class="player-info" id="player-1">
+                    <span class="player-name">Player 2</span>
+                    <div class="player-cards"><span class="card-count">4</span> cards</div>
+                </div>
+            </div>
+            
+            <div class="player-position pos-right">
+                <div class="player-info" id="player-5">
+                    <span class="player-name">Player 6</span>
+                    <div class="player-cards"><span class="card-count">4</span> cards</div>
+                </div>
+            </div>
+
+            <!-- Center playing area -->
+            <div class="playing-area">
+                <div id="played-cards" class="played-cards"></div>
+                <div id="score-display" class="score-display">
+                    <div class="team-score">
+                        <span class="label">Team 1:</span>
+                        <span id="team-0-score">0</span>
+                    </div>
+                    <div class="hand-info">Hand <span id="current-hand">1</span>/4</div>
+                    <div class="team-score">
+                        <span class="label">Team 2:</span>
+                        <span id="team-1-score">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Your position (bottom) -->
+            <div class="player-position pos-bottom">
+                <div class="your-hand">
+                    <div id="your-cards" class="your-cards-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Panel -->
+        <div class="action-panel">
+            <div id="trump-calling-actions" class="action-group hidden">
+                <h3>Call Trump</h3>
+                <div class="suit-buttons">
+                    <button class="btn-suit hearts" data-suit="♥">♥</button>
+                    <button class="btn-suit diamonds" data-suit="♦">♦</button>
+                    <button class="btn-suit clubs" data-suit="♣">♣</button>
+                    <button class="btn-suit spades" data-suit="♠">♠</button>
+                </div>
+                <button id="pass-trump-btn" class="btn btn-secondary">Pass</button>
+                <button id="call-joint-btn" class="btn btn-accent">Call Joint</button>
+            </div>
+
+            <div id="challenge-actions" class="action-group hidden">
+                <h3>Challenge</h3>
+                <div class="challenge-buttons">
+                    <button id="adu-btn" class="btn btn-challenge">Adu</button>
+                    <button id="shertu-btn" class="btn btn-challenge">Shertu</button>
+                    <button id="double-btn" class="btn btn-challenge">Double</button>
+                    <button id="shubble-btn" class="btn btn-challenge">Shubble</button>
+                </div>
+                <button id="proceed-stage2-btn" class="btn btn-primary hidden">Continue to Stage 2</button>
+            </div>
+
+            <div id="challenge-response-actions" class="action-group hidden">
+                <h3>Respond to Challenge</h3>
+                <div class="button-group">
+                    <button id="accept-challenge-btn" class="btn btn-primary">Accept</button>
+                    <button id="fold-btn" class="btn btn-danger">Fold</button>
+                </div>
+            </div>
+
+            <div id="joint-trump-selection" class="action-group hidden">
+                <h3>Select Trump Suit</h3>
+                <div class="suit-buttons" id="joint-suit-buttons">
+                    <!-- Will be populated with available suits -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-messages" class="status-messages"></div>
+    </div>
+
+    <!-- Modal for Game Over -->
+    <div id="game-over-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Game Over!</h2>
+            <div id="game-over-content"></div>
+            <button id="new-game-btn" class="btn btn-primary">Start New Game</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='game.js') }}"></script>
+</body>
+</html>
