@@ -170,6 +170,11 @@
                     gameState.myPlayerId = "{{ current_player_id }}";
                     gameState.game_state = initialGameState;
                     gameState.myCards = initialGameState.my_cards || []; 
+
+                    socket.emit('join_game', { 
+                    game_code: "DEVGAME", 
+                    player_name: "Player" 
+                });
                     
                     showScreen('game');
                     updateGameState(initialGameState); 

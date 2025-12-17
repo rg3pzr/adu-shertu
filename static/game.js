@@ -333,6 +333,22 @@ function updateActionPanels(state) {
     
     if (state.phase === 'stage1_trump_calling' && myIdx === state.trump_calling_index) {
         document.getElementById('trump-calling-actions').classList.remove('hidden');
+
+        // === JOINT VISIBILITY LOGIC ===
+        const jointBtn = document.getElementById('call-joint-btn');
+        if (jointBtn) {
+            // Count how many 9s are in the current hand
+            const nineCount = gameState.myCards.filter(card => card.rank === '9').length;
+            
+            if (nineCount >= 2) {
+                jointBtn.classList.remove('hidden');
+                jointBtn.style.display = "inline-block"; // Ensure it's not hidden by other CSS
+            } else {
+                jointBtn.classList.add('hidden');
+                jointBtn.style.display = "none";
+            }
+        }
+        // ==============================
     }
     if (state.phase === 'stage1_challenging') {
         document.getElementById('challenge-actions').classList.remove('hidden');
