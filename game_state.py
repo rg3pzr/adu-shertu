@@ -49,7 +49,9 @@ class GamePhase(Enum):
     STAGE1_DEALING = "stage1_dealing"  # Dealing first 2 cards
     STAGE1_TRUMP_CALLING = "stage1_trump_calling"  # Players calling trump
     STAGE1_CHALLENGING = "stage1_challenging"  # Adu/Shertu challenges
+    STAGE1_JOINT_PENDING = "stage1_joint_pending"  # NEW: Joint called, waiting for stage 2 deal completion
     STAGE2_DEALING = "stage2_dealing"  # Dealing remaining 2 cards
+    STAGE2_TRUMP_SELECTION = "stage2_trump_selection"  # NEW: Joint caller selecting trump
     STAGE2_CHALLENGING = "stage2_challenging"  # Double/Shubble challenges
     PLAYING_HAND = "playing_hand"  # Playing cards in current hand
     GAME_OVER = "game_over"  # Game finished
@@ -70,6 +72,7 @@ class AduShertuGame:
         self.trump_suit: Optional[Suit] = None
         self.trump_caller_index: Optional[int] = None
         self.joint_called = False
+        self.joint_caller_index: Optional[int] = None # NEW: Index of player who called joint
         
         # Okalu tracking
         self.team_okalu = [0, 0]  # [Team 0, Team 1]
@@ -107,7 +110,8 @@ class AduShertuGame:
             "name": player_name,
             "team": team,
             "cards": [],
-            "ready": False
+            "ready": False,
+            "connected": True # Added for dev mode
         })
         return True
     
@@ -136,6 +140,7 @@ class AduShertuGame:
         self.trump_suit = None
         self.trump_caller_index = None
         self.joint_called = False
+        self.joint_caller_index = None # NEW: Reset joint caller
         self.challenge_multiplier = 1
         self.last_challenger_team = None
         self.pending_challenge = False
@@ -155,7 +160,9 @@ class AduShertuGame:
         # Start stage 1: deal 2 cards to each player
         self._deal_stage1()
         self.phase = GamePhase.STAGE1_TRUMP_CALLING
-        self.trump_calling_index = self.dealer_index
+        
+        # Trump calling starts to the left of the dealer
+        self.trump_calling_index = (self.dealer_index + 1) % 6
     
     def _create_deck(self) -> List[Card]:
         """Create a 24-card deck (9, 10, J, Q, K, A of each suit)."""
@@ -175,13 +182,14 @@ class AduShertuGame:
     
     def _deal_stage2(self):
         """Deal remaining 2 cards to each player."""
+        # Note: This is called *after* Stage 1 trump call or Joint is called.
         for i in range(6):
             player_index = (self.dealer_index + i) % 6
             for _ in range(2):
                 if self.deck:
                     self.players[player_index]["cards"].append(self.deck.pop())
         
-        # Identify jack trump team
+        # Identify jack trump team (if trump is already set)
         self._identify_jack_trump_team()
     
     def attempt_trump_call(self, player_index: int, suit: Suit) -> Dict:
@@ -192,6 +200,8 @@ class AduShertuGame:
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
             return {"success": False, "message": "Not in trump calling phase"}
         
+        # NOTE: Trump calling begins at the person to the left of the dealer.
+        # The index should be the person *after* the dealer.
         if player_index != self.trump_calling_index:
             return {"success": False, "message": "Not your turn to call trump"}
         
@@ -220,6 +230,10 @@ class AduShertuGame:
         self.trump_caller_index = player_index
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu
+        
+        # Deal Stage 2 cards immediately
+        self._deal_stage2()
+        
         self.phase = GamePhase.STAGE1_CHALLENGING
         
         return {
@@ -229,7 +243,7 @@ class AduShertuGame:
             "message": f"Trump called: {suit.value}"
         }
     
-    def attempt_joint_call(self, player_index: int, suit1: Suit, suit2: Suit) -> Dict:
+    def attempt_joint_call(self, player_index: int) -> Dict: # MODIFIED: Removed suit arguments
         """Attempt to call joint with two 9s."""
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
             return {"success": False, "message": "Not in trump calling phase"}
@@ -239,23 +253,25 @@ class AduShertuGame:
         
         player = self.players[player_index]
         
-        # Check if player has both 9s
-        has_nine_1 = any(c.rank == Rank.NINE and c.suit == suit1 for c in player["cards"])
-        has_nine_2 = any(c.rank == Rank.NINE and c.suit == suit2 for c in player["cards"])
+        # Check if player has exactly two 9s in their 2-card hand
+        nines = [c for c in player["cards"] if c.rank == Rank.NINE]
         
-        if not (has_nine_1 and has_nine_2):
-            return {"success": False, "message": "You don't have both 9s"}
+        if len(nines) != 2:
+            return {"success": False, "message": "You must have two 9s to call joint."}
         
         # Valid joint call
         self.joint_called = True
         self.trump_caller_index = player_index
+        self.joint_caller_index = player_index # NEW: Record joint caller index
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu * 2  # Joint auto-doubles
         self.challenge_multiplier = 2
         
-        # Don't set trump yet, will be set after stage 2
-        self.phase = GamePhase.STAGE2_DEALING
+        # Don't set trump yet, but deal remaining cards
         self._deal_stage2()
+        
+        # Set phase to wait for the joint caller to select trump
+        self.phase = GamePhase.STAGE2_TRUMP_SELECTION
         
         return {
             "success": True,
@@ -273,24 +289,44 @@ class AduShertuGame:
         # Move to next player
         self.trump_calling_index = (self.trump_calling_index + 1) % 6
         
-        # Check if we've gone full circle
-        if self.trump_calling_index == self.dealer_index:
-            # All players passed, need to reshuffle
+        # The trump calling cycle ends at the dealer (whose turn it would be after player 5)
+        # Note: The trump calling starts at (dealer + 1) % 6.
+        start_index = (self.dealer_index + 1) % 6
+        
+        if self.trump_calling_index == start_index:
+            # All players passed, need to reshuffle/discard
             if self.stage1_round == 1:
-                # First round failed, try again with remaining 12 cards
+                # First round failed, shuffle all 12 dealt cards back into discarded_cards
+                # The next 12 cards are dealt (which should contain the other two 9s)
+                
                 self.stage1_round = 2
+                
+                # Collect cards from all players and the deck (remaining 12 from 24-card deck)
                 self.discarded_cards.extend([c for p in self.players for c in p["cards"]])
+                # If there are still cards in the deck, they become the new 'deck'
+                # In a 24-card deck, the first 12 were dealt. The remaining 12 are the new deck.
+                # The assumption is that the second 12 cards are *already* in self.deck if not dealt.
+                
+                # Clear player hands
                 for player in self.players:
                     player["cards"] = []
+                
+                # Deal the next 12 cards (the remaining ones)
                 self._deal_stage1()
+                
+                # Reset trump calling turn back to dealer's left
+                self.trump_calling_index = (self.dealer_index + 1) % 6
+                
                 return {
                     "success": True,
                     "reshuffled": True,
-                    "message": "No trump called, dealing new cards"
+                    "message": "No trump called in first round, dealing new cards"
                 }
             else:
-                # This shouldn't happen (deck has 4 nines)
-                return {"success": False, "message": "ERROR: No trump in second round"}
+                # Second round failed (this implies an error or unusual game state based on rules)
+                # The PDF states it is *necessary* for a 9 to be called in this round.
+                self.phase = GamePhase.GAME_OVER
+                return {"success": False, "message": "Game ended prematurely: No trump called in two rounds."}
         
         return {"success": True, "next_player": self.trump_calling_index}
     
@@ -319,7 +355,11 @@ class AduShertuGame:
                 player["cards"].append(new_card)
                 break
             else:
+                # Card is same suit, discard it and draw another
                 self.discarded_cards.append(new_card)
+        
+        # Move turn to the next player
+        self.trump_calling_index = (player_index + 1) % 6
         
         return {
             "success": True,
@@ -330,8 +370,20 @@ class AduShertuGame:
     
     def _calculate_base_okalu(self, trump_caller_index: int) -> int:
         """Calculate base okalu based on trump caller's distance from dealer."""
+        # Calculate distance from dealer: (caller_index - dealer_index) % 6
+        # The PDF describes the order relative to the dealer:
+        # 0: Dealer (6 points)
+        # 1: Player to left (5 points)
+        # 2: Player next to that (4 points)
+        # 3: Furthest player (3 points)
+        # 4: Player next to that on the right side of dealer (4 points)
+        # 5: Player to right of dealer (5 points)
         distance = (trump_caller_index - self.dealer_index) % 6
         okalu_map = {0: 6, 1: 5, 2: 4, 3: 3, 4: 4, 5: 5}
+        
+        # NOTE: The rule states: "Starting from the dealer, the player will look at their cards..."
+        # This implies the dealer is the first person to check, making distance 0.
+        
         return okalu_map[distance]
     
     def attempt_challenge(self, player_index: int, challenge_word: str) -> Dict:
@@ -340,12 +392,18 @@ class AduShertuGame:
         challenge_word: "adu", "shertu", "double", "shubble"
         """
         player_team = self.players[player_index]["team"]
-        trump_caller_team = self.players[self.trump_caller_index]["team"]
         
+        # Determine the team that called trump/joint, which is the "initial team" for Stage 1
+        # For Stage 2, it's the team of the first challenger.
+        if self.trump_caller_index is not None:
+            initial_team = self.players[self.trump_caller_index]["team"]
+        else:
+            initial_team = None # Should not happen if challenge is possible
+
         if self.phase == GamePhase.STAGE1_CHALLENGING:
             if challenge_word == "adu":
                 # Only opposing team can call Adu
-                if player_team == trump_caller_team:
+                if player_team == initial_team:
                     return {"success": False, "message": "Only opposing team can call Adu"}
                 
                 self.challenge_multiplier *= 2
@@ -356,7 +414,7 @@ class AduShertuGame:
             
             elif challenge_word == "shertu":
                 # Only trump calling team can call Shertu (after Adu)
-                if player_team != trump_caller_team:
+                if player_team != initial_team:
                     return {"success": False, "message": "Only trump calling team can call Shertu"}
                 if self.last_challenger_team != (1 - player_team):
                     return {"success": False, "message": "Can only call Shertu after Adu"}
@@ -366,8 +424,12 @@ class AduShertuGame:
                 self.last_challenger_team = player_team
                 
                 return {"success": True, "current_okalu": self.current_game_okalu}
+            
+            # If no challenge pending, allow proceeding to stage 2
+            return {"success": False, "message": "Invalid challenge word or sequence in Stage 1"}
+
         
-        elif self.phase == GamePhase.STAGE2_CHALLENGING or self.phase == GamePhase.PLAYING_HAND:
+        elif self.phase in [GamePhase.STAGE2_CHALLENGING, GamePhase.PLAYING_HAND]:
             # Can only call double before 2nd card is played
             if len(self.current_hand_cards) >= 2:
                 return {"success": False, "message": "Too late to challenge"}
@@ -407,6 +469,7 @@ class AduShertuGame:
         if not self.pending_challenge:
             return {"success": False, "message": "No pending challenge"}
         
+        # The team responding should be the opposing team
         if team == self.last_challenger_team:
             return {"success": False, "message": "Cannot respond to own challenge"}
         
@@ -414,6 +477,9 @@ class AduShertuGame:
             # Team folds, apply okalu from one challenge before
             fold_okalu = self.base_okalu * (self.challenge_multiplier // 2)
             self.team_okalu[team] += fold_okalu
+            
+            # Game ends and state is reset
+            self.phase = GamePhase.GAME_OVER 
             
             return {
                 "success": True,
@@ -427,6 +493,9 @@ class AduShertuGame:
             self.pending_challenge = False
             self.challenge_type = None
             
+            # If still in stage 2 challenging (before any card played), the game needs to continue.
+            # If a card was played, the game continues normally.
+            
             return {
                 "success": True,
                 "accepted": True,
@@ -436,32 +505,42 @@ class AduShertuGame:
         return {"success": False, "message": "Invalid response"}
     
     def proceed_to_stage2(self):
-        """Move from stage 1 to stage 2."""
+        """Move from stage 1 (Adu/Shertu) to stage 2 (playing/Double/Shubble)."""
         if self.phase != GamePhase.STAGE1_CHALLENGING:
             return {"success": False, "message": "Not ready for stage 2"}
         
-        self.phase = GamePhase.STAGE2_DEALING
-        self._deal_stage2()
+        # The Stage 2 deal happened immediately after the trump call/joint, 
+        # so we skip GamePhase.STAGE2_DEALING.
+        
         self.phase = GamePhase.STAGE2_CHALLENGING
         
         # Set current player to right of dealer for first hand
+        # NOTE: The first player to go is the person to the right of the dealer.
         self.current_player_index = (self.dealer_index + 1) % 6
         
         return {"success": True}
     
     def select_trump_after_joint(self, player_index: int, suit: Suit) -> Dict:
         """Select trump suit after calling joint."""
-        if player_index != self.trump_caller_index:
+        if self.phase != GamePhase.STAGE2_TRUMP_SELECTION:
+            return {"success": False, "message": "Not in trump selection phase"}
+            
+        if player_index != self.joint_caller_index: # MODIFIED: Use joint_caller_index
             return {"success": False, "message": "Only joint caller can select trump"}
         
-        # Must be one of the two 9 suits
+        # Must be one of the two 9 suits (the player has the 9 in their hand)
         player = self.players[player_index]
         has_nine = any(c.rank == Rank.NINE and c.suit == suit for c in player["cards"])
         if not has_nine:
             return {"success": False, "message": "Must select a suit you have a 9 in"}
         
         self.trump_suit = suit
+        self._identify_jack_trump_team() # Now that trump is set, identify Jack team
+        
+        # Move directly to challenging/playing phase
         self.phase = GamePhase.STAGE2_CHALLENGING
+        
+        # Set current player to right of dealer for first hand
         self.current_player_index = (self.dealer_index + 1) % 6
         
         return {"success": True, "trump_suit": suit.value}
@@ -471,6 +550,10 @@ class AduShertuGame:
         if not self.trump_suit:
             return
         
+        # Only search if Jack-trump team hasn't been identified (important for Stage 2 joint)
+        if self.jack_trump_team is not None:
+            return
+            
         for i, player in enumerate(self.players):
             for card in player["cards"]:
                 if card.rank == Rank.JACK and card.suit == self.trump_suit:
@@ -500,8 +583,8 @@ class AduShertuGame:
             return {"success": False, "message": validation["reason"]}
         
         # Play the card
-        player["cards"].pop(card_index)
-        self.current_hand_cards.append((player_index, card))
+        played_card = player["cards"].pop(card_index)
+        self.current_hand_cards.append((player_index, played_card))
         
         # Set leading suit if first card
         if len(self.current_hand_cards) == 1:
@@ -515,7 +598,7 @@ class AduShertuGame:
         # Move to next player
         self.current_player_index = (self.current_player_index + 1) % 6
         
-        return {"success": True, "card_played": card.to_dict()}
+        return {"success": True, "card_played": played_card.to_dict()}
     
     def _validate_card_play(self, player_index: int, card: Card) -> Dict:
         """Validate if a card can be played according to rules."""
@@ -525,37 +608,56 @@ class AduShertuGame:
         if not self.current_hand_cards:
             return {"valid": True}
         
-        # Check leading suit requirement
+        # --- Rule 1: Must follow leading suit if available ---
         has_leading_suit = any(c.suit == self.leading_suit for c in player["cards"])
         
         if has_leading_suit and card.suit != self.leading_suit:
-            # Must play leading suit if you have it, unless...
-            # Exception 1: Playing higher trump
-            if card.suit == self.trump_suit:
+            # Exception 1: They have a trump card that is higher than any currently placed trump.
+            if card.suit == self.trump_suit and self.trump_suit is not None:
                 highest_trump = self._get_highest_trump_in_hand()
-                if highest_trump and self._compare_trump_cards(card, highest_trump) > 0:
+                
+                # Check if the played card is higher than the current highest trump
+                is_higher_trump = highest_trump is None or self._compare_trump_cards(card, highest_trump) > 0
+                
+                if is_higher_trump:
                     return {"valid": True}
                 else:
-                    return {"valid": False, "reason": "Must play leading suit or higher trump"}
-            else:
-                return {"valid": False, "reason": "Must play leading suit"}
+                    return {"valid": False, "reason": "Must play leading suit or a higher trump card."}
+            
+            # Exception 2: They have multiple cards in the leading suit and can choose which one to pick
+            # This exception is implicitly handled by the user selecting a card that matches the leading suit
+            # if the logic reaches here, they are attempting to play a non-leading, non-trump card when they have the leading suit, which is invalid.
+            
+            # If it's a non-trump, non-leading suit, it's an illegal play if they have the leading suit.
+            return {"valid": False, "reason": "Must play the leading suit if you have it."}
         
-        # Not leading suit, check trump restrictions
-        if card.suit == self.trump_suit:
-            highest_trump = self._get_highest_trump_in_hand()
-            if highest_trump:
-                if self._compare_trump_cards(card, highest_trump) < 0:
-                    # Playing lower trump
-                    # Only allowed if only have trump cards
+        # --- Rule 2: Non-leading suit played ---
+        if card.suit != self.leading_suit:
+            # Exception 3: They have no cards in the leading suit and can place any card they wish, 
+            # except if it is a trump card of lower hierarchy than the highest trump card placed.
+            
+            # Check if it's an invalid lower trump card
+            if card.suit == self.trump_suit and self.trump_suit is not None:
+                highest_trump = self._get_highest_trump_in_hand()
+                
+                if highest_trump and self._compare_trump_cards(card, highest_trump) < 0:
+                    # Check exception to exception 3: If player only has trumps left
                     if all(c.suit == self.trump_suit for c in player["cards"]):
                         return {"valid": True}
                     else:
-                        return {"valid": False, "reason": "Cannot play lower trump"}
-        
+                        return {"valid": False, "reason": "Cannot play a lower trump card if you have other non-leading, non-trump cards."}
+            
+            # If the card is not a trump, or is a higher trump, or the only card left is a lower trump, it's valid (they couldn't follow suit).
+            return {"valid": True}
+
+        # --- Rule 3: Leading suit played (always valid if they reach here) ---
         return {"valid": True}
     
     def _get_highest_trump_in_hand(self) -> Optional[Card]:
         """Get the highest trump card currently in the hand."""
+        if self.trump_suit is None:
+            return None
+        
         trump_cards = [card for _, card in self.current_hand_cards if card.suit == self.trump_suit]
         if not trump_cards:
             return None
@@ -575,6 +677,7 @@ class AduShertuGame:
     
     def _get_trump_rank(self, rank: Rank) -> int:
         """Get the hierarchy value for a trump card."""
+        # Hierarchy: 10 < Q < K < A < 9 < J
         trump_hierarchy = {
             Rank.TEN: 1,
             Rank.QUEEN: 2,
@@ -587,6 +690,7 @@ class AduShertuGame:
     
     def _get_non_trump_rank(self, rank: Rank) -> int:
         """Get the hierarchy value for a non-trump card."""
+        # Hierarchy: 9 < 10 < J < Q < K < A
         non_trump_hierarchy = {
             Rank.NINE: 1,
             Rank.TEN: 2,
@@ -686,15 +790,18 @@ class AduShertuGame:
         losing_team = 1 - winning_team
         
         # Update okalu
-        self.team_okalu[losing_team] += self.current_game_okalu
+        # NOTE: Okalu logic seems to favor the winning team by reducing their okalu debt first.
         
-        # Check if winning team had okalu to reduce
+        okalu_to_apply = self.current_game_okalu
+        
+        # 1. Reduce winner's debt (if any)
         if self.team_okalu[winning_team] > 0:
-            reduction = min(self.team_okalu[winning_team], self.current_game_okalu)
+            reduction = min(self.team_okalu[winning_team], okalu_to_apply)
             self.team_okalu[winning_team] -= reduction
-            remaining = self.current_game_okalu - reduction
-            if remaining > 0:
-                self.team_okalu[losing_team] += remaining
+            okalu_to_apply -= reduction
+            
+        # 2. Apply remaining okalu to loser's debt
+        self.team_okalu[losing_team] += okalu_to_apply
         
         self.phase = GamePhase.GAME_OVER
         
@@ -707,6 +814,10 @@ class AduShertuGame:
             "team_okalu": self.team_okalu.copy()
         }
     
+    def get_player_order(self) -> List[str]: # NEW METHOD
+        """Returns the player IDs in their current seating order (0 to 5)."""
+        return [p["id"] for p in self.players]
+
     def get_game_state(self, player_id: Optional[str] = None) -> Dict:
         """Get current game state, optionally filtered for a specific player."""
         state = {
@@ -717,7 +828,8 @@ class AduShertuGame:
                     "id": p["id"],
                     "name": p["name"],
                     "team": p["team"],
-                    "card_count": len(p["cards"])
+                    "card_count": len(p["cards"]),
+                    "connected": p.get("connected", True) # Added for dev mode
                 }
                 for p in self.players
             ],
@@ -736,7 +848,8 @@ class AduShertuGame:
             "challenge_type": self.challenge_type,
             "last_challenger_team": self.last_challenger_team,
             "trump_calling_index": self.trump_calling_index,
-            "joint_called": self.joint_called
+            "joint_called": self.joint_called,
+            "joint_caller_index": self.joint_caller_index # NEW
         }
         
         # Add player-specific info if player_id provided
