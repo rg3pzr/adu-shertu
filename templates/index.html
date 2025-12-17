@@ -33,11 +33,7 @@
              {{ current_player.name if current_player else 'N/A' }})
         </p>
         </div>
-    <script>
-        // Set the active screen to 'game' immediately in dev mode
-        document.getElementById('welcome-screen').classList.remove('active');
-        document.getElementById('game-screen').classList.add('active');
-    </script>
+
     {% endif %}
     <div id="welcome-screen" class="screen {% if not developer_mode %}active{% endif %}">
         <div class="container">
@@ -216,29 +212,37 @@
     
     {% if developer_mode %}
     <script>
-        // Use Flask template variables to initialize the JS state,
-        // since the SocketIO join/start events are bypassed.
-        
-        const initialGameState = {{ game_state | tojson | safe}};
-        
-        // Set global gameState variables
-        gameState.myPlayerId = "{{ current_player_id }}";
-        gameState.myTeam = initialGameState.my_team;
-        gameState.gameCode = initialGameState.game_code;
-        gameState.myCards = initialGameState.my_cards || []; // This grabs your card data
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                {% set game_state_json = game_state | tojson | safe %}
+                const initialGameState = {{ game_state_json }};
+                
+                // 1. Initialize Global State
+                gameState.myPlayerId = "{{ current_player_id }}";
+                gameState.game_state = initialGameState;
+                gameState.myCards = initialGameState.my_cards || []; 
+                
+                console.log("Dev Mode State Initialized:", gameState);
 
-        gameState.game_state = initialGameState;
-        
-        // Update all UI components (scores, phase, player info)
-        updateGameState(initialGameState); 
-        
-        // Render the active player's hand
-        renderMyCards(); 
-        
-        // Ensure we are on the game screen (redundant but safe)
-        showScreen('game');
-
-        console.log("Dev Mode UI Initialized with cards:", gameState.myCards);
+                // 2. Switch Screens Safely
+                const welcome = document.getElementById('welcome-screen');
+                const game = document.getElementById('game-screen');
+                
+                if (welcome && game) {
+                    welcome.classList.remove('active');
+                    game.classList.add('active');
+                } else {
+                    console.error("Could not find screen elements!");
+                }
+                
+                // 3. Trigger Rendering
+                updateGameState(initialGameState); 
+                renderMyCards(); 
+                
+            } catch (e) {
+                console.error("Error in Dev Mode Init Script:", e);
+            }
+        });
     </script>
     {% endif %}
 </body>
