@@ -156,6 +156,34 @@ def handle_join_game(data):
     """Handle player joining a game."""
     game_code = data.get('game_code', '').upper()
     player_name = data.get('player_name', 'Anonymous')
+
+    player_id = data.get('player_id')
+    
+    if game_code not in active_games:
+        emit('error', {'message': 'Game not found'})
+        return
+    
+    game = active_games[game_code]
+    
+    # DEV MODE LOGIC: If a player_id is provided, don't generate a new one
+    if DEVELOPER_MODE and game_code == DEV_GAME_CODE and player_id:
+        # Check if this dev_player exists
+        if not any(p['id'] == player_id for p in game.players):
+            emit('error', {'message': 'Dev player not found'})
+            return
+    else:
+        # Standard Game Logic: Generate new ID
+        player_id = f"player_{len(game.players)}_{request.sid[:6]}"
+        success = game.add_player(player_id, player_name)
+        if not success:
+            emit('error', {'message': 'Game is full'})
+            return
+    
+    # CRITICAL: Link the socket to the game code and player ID
+    join_room(game_code)
+    player_connections[request.sid] = (game_code, player_id)
+    
+    print(f"DEBUG: Linked SID {request.sid} to {player_id} in {game_code}")
     
     if game_code not in active_games:
         emit('error', {'message': 'Game not found'})

@@ -173,7 +173,8 @@
 
                     socket.emit('join_game', { 
                     game_code: "DEVGAME", 
-                    player_name: "Player" 
+                    player_id: gameState.myPlayerId, // <-- Passes dev_player_x
+                    player_name: "Dev Mode" 
                 });
                     
                     showScreen('game');
