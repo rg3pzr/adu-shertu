@@ -1,7 +1,6 @@
 /**
  * game.js - Client-side game logic and UI management
- * 
- * Handles:
+ * * Handles:
  * - WebSocket connection and event handling
  * - UI updates and screen transitions
  * - Player actions and card interactions
@@ -56,20 +55,24 @@ function init() {
     socket.on('join_success', handleJoinSuccess);
     socket.on('player_joined', handlePlayerJoined);
     socket.on('game_started', handleGameStarted);
-    socket.on('game_state_update', handleGameStateUpdate);
+    // The server now emits 'game_state_update' for generic updates
+    socket.on('game_state_update', handleGameStateUpdate); 
+    // The server now sends specific player hand updates via 'card_played' payload
+    socket.on('card_played', handleCardPlayed); 
+    
     socket.on('trump_called', handleTrumpCalled);
     socket.on('joint_called', handleJointCalled);
     socket.on('trump_passed', handleTrumpPassed);
     socket.on('challenge_issued', handleChallengeIssued);
     socket.on('challenge_accepted', handleChallengeAccepted);
     socket.on('team_folded', handleTeamFolded);
-    socket.on('card_played', handleCardPlayed);
+    
     socket.on('cards_updated', handleCardsUpdated);
     socket.on('card_replacement_required', handleCardReplacementRequired);
     socket.on('card_replaced', handleCardReplaced);
     socket.on('stage2_started', handleStage2Started);
     socket.on('trump_selected_joint', handleTrumpSelectedJoint);
-    socket.on('hand_complete', handleHandComplete);
+    // NOTE: 'hand_complete' is now integrated into the 'card_played' handler
     
     // Trump calling action buttons
     document.querySelectorAll('.btn-suit').forEach(btn => {
@@ -152,6 +155,7 @@ function handleTrumpCalled(data) {
 
 function handleJointCalled(data) {
     showStatus(`${data.player_name} called JOINT! Okalu doubled.`, 'success');
+    // NOTE: The game state update here will show the phase change.
     updateGameState(data.game_state);
 }
 
@@ -193,6 +197,13 @@ function handleTeamFolded(data) {
 }
 
 function handleCardPlayed(data) {
+    // Check if this player is the one who played the card, and update their hand immediately
+    if (data.game_state_my_view) { // New data key added in app.py
+        gameState.myCards = data.game_state_my_view.my_cards || [];
+        renderMyCards();
+    }
+    
+    // Update general game state for all players
     updateGameState(data.game_state);
     renderPlayedCards(data.game_state.current_hand_cards);
     
@@ -214,9 +225,6 @@ function handleCardPlayed(data) {
             }, 2000);
         }
     }
-    
-    gameState.myCards = data.game_state.my_cards || [];
-    renderMyCards();
 }
 
 function handleCardsUpdated(data) {
@@ -251,6 +259,13 @@ function handleTrumpSelectedJoint(data) {
 // UI Action handlers
 async function handleCreateGame() {
     const playerName = playerNameInput.value.trim();
+    // In Developer Mode, ignore player name input on the index page
+    if (document.getElementById('developer-mode-info')) {
+        showScreen('lobby');
+        // No server request needed in dev mode, app.py sets up the initial state.
+        return;
+    }
+
     if (!playerName) {
         showStatus('Please enter your name', 'error');
         return;
@@ -306,14 +321,16 @@ function handleStartGame() {
 }
 
 function handleTrumpSuitSelection(suit) {
-    const phase = document.getElementById('game-phase').textContent;
+    const currentPhase = gameState.game_state.phase;
     
-    if (phase.includes('trump')) {
+    if (currentPhase === 'stage1_trump_calling') {
         // Regular trump calling
         socket.emit('call_trump', { suit });
-    } else {
-        // Joint trump selection
+    } else if (currentPhase === 'stage2_trump_selection') {
+        // Joint trump selection (new phase)
         socket.emit('select_trump_joint', { suit });
+    } else {
+        showStatus('Cannot select trump at this time.', 'error');
     }
 }
 
@@ -322,18 +339,14 @@ function handlePassTrump() {
 }
 
 function handleCallJoint() {
-    // Get the two 9s from player's hand
-    const nines = gameState.myCards.filter(c => c.rank === '9');
+    // The server (game_state.py) now handles checking for the two 9s, so we send an empty data object.
     
-    if (nines.length !== 2) {
-        showStatus('You need exactly 2 nines to call joint', 'error');
+    if (gameState.game_state.phase !== 'stage1_trump_calling') {
+        showStatus('Joint can only be called during the trump calling phase.', 'error');
         return;
     }
     
-    socket.emit('call_joint', {
-        suit1: nines[0].suit,
-        suit2: nines[1].suit
-    });
+    socket.emit('call_joint', {}); // MODIFIED: No suits passed
 }
 
 function handleChallenge(challengeWord) {
@@ -380,7 +393,10 @@ function updatePlayersList(players) {
     
     players.forEach(player => {
         const playerCard = document.createElement('div');
-        playerCard.className = `player-card team-${player.team}`;
+        // Check for connection status (useful in dev mode)
+        const connectionStatus = player.connected === false ? 'disconnected' : 'connected';
+        playerCard.className = `player-card team-${player.team} ${connectionStatus}`;
+
         playerCard.innerHTML = `
             <div class="player-name">${player.name}</div>
             <div class="team-badge">Team ${player.team + 1}</div>
@@ -392,6 +408,9 @@ function updatePlayersList(players) {
 }
 
 function updateGameState(state) {
+    // Store the full state globally for easy access
+    gameState.game_state = state;
+
     // Update okalu display
     document.getElementById('team-0-okalu').textContent = state.team_okalu[0];
     document.getElementById('team-1-okalu').textContent = state.team_okalu[1];
@@ -400,7 +419,8 @@ function updateGameState(state) {
     // Update trump display
     const trumpSuit = document.getElementById('trump-suit');
     if (state.trump_suit) {
-        trumpSuit.textContent = state.trump_suit;
+        // Render icon
+        trumpSuit.innerHTML = `<span class="${getSuitClass(state.trump_suit)}">${state.trump_suit}</span>`;
     } else {
         trumpSuit.textContent = '?';
     }
@@ -457,8 +477,10 @@ function getPhaseText(phase) {
         'waiting': 'Waiting for players...',
         'stage1_dealing': 'Dealing cards...',
         'stage1_trump_calling': 'Calling trump...',
+        'stage1_joint_pending': 'Joint called, dealing stage 2...', // NEW PHASE
         'stage1_challenging': 'Stage 1 challenges',
         'stage2_dealing': 'Dealing remaining cards...',
+        'stage2_trump_selection': 'Joint caller selects trump...', // NEW PHASE
         'stage2_challenging': 'Stage 2 - Play or challenge',
         'playing_hand': 'Playing hand',
         'game_over': 'Game over'
@@ -475,38 +497,62 @@ function updateActionPanels(state) {
     
     // Get my player index
     const myIndex = state.players.findIndex(p => p.id === gameState.myPlayerId);
-    const isMyTurn = myIndex === state.current_player_index || myIndex === state.trump_calling_index;
+    const isMyTurnForTrump = myIndex === state.trump_calling_index;
+    const isMyTurnToPlay = myIndex === state.current_player_index;
+    const isJointCaller = myIndex === state.joint_caller_index;
     
-    // Show appropriate actions based on phase
-    if (state.phase === 'stage1_trump_calling' && isMyTurn) {
+    // 1. Regular Trump Calling
+    if (state.phase === 'stage1_trump_calling' && isMyTurnForTrump) {
         document.getElementById('trump-calling-actions').classList.remove('hidden');
     }
     
+    // 2. Stage 1 Challenges
     if (state.phase === 'stage1_challenging') {
         document.getElementById('challenge-actions').classList.remove('hidden');
         document.getElementById('proceed-stage2-btn').classList.remove('hidden');
     }
     
-    if (state.phase === 'stage2_challenging' || state.phase === 'playing_hand') {
-        if (!state.pending_challenge) {
-            document.getElementById('challenge-actions').classList.remove('hidden');
-            document.getElementById('proceed-stage2-btn').classList.add('hidden');
-        }
-    }
-    
-    if (state.joint_called && state.trump_calling_index === myIndex && !state.trump_suit) {
+    // 3. Joint Trump Selection (NEW)
+    if (state.phase === 'stage2_trump_selection' && isJointCaller) {
         document.getElementById('joint-trump-selection').classList.remove('hidden');
+        
         // Populate joint suit buttons with the two 9 suits
         const nines = gameState.myCards.filter(c => c.rank === '9');
         const jointButtons = document.getElementById('joint-suit-buttons');
-        jointButtons.innerHTML = '';
+        
+        // Remove existing buttons before populating
+        jointButtons.innerHTML = ''; 
+        
         nines.forEach(card => {
             const btn = document.createElement('button');
             btn.className = `btn-suit ${getSuitClass(card.suit)}`;
             btn.dataset.suit = card.suit;
             btn.textContent = card.suit;
+            
+            // Add event listener to the dynamically created buttons
+            btn.addEventListener('click', (e) => {
+                const suit = e.target.dataset.suit;
+                handleTrumpSuitSelection(suit);
+            });
+            
             jointButtons.appendChild(btn);
         });
+    }
+
+    // 4. Stage 2 Challenges / Playing
+    if (state.phase === 'stage2_challenging' || state.phase === 'playing_hand') {
+        if (!state.pending_challenge) {
+            document.getElementById('challenge-actions').classList.remove('hidden');
+            // The logic to play a card is handled in handleCardClick, which relies on isMyTurnToPlay
+        }
+        document.getElementById('proceed-stage2-btn').classList.add('hidden'); // Hide after Stage 1
+    }
+
+    // 5. Challenge Response
+    if (state.pending_challenge && gameState.myTeam !== state.last_challenger_team) {
+        showChallengeResponseActions();
+    } else {
+        hideChallengeResponseActions();
     }
 }
 
@@ -524,15 +570,21 @@ function renderMyCards() {
     
     gameState.myCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
-        cardEl.className = `card ${getSuitClass(card.suit)}`;
+        // MODIFIED: Use the suit symbol directly for the card icon display
+        const suitClass = getSuitClass(card.suit);
+        
+        cardEl.className = `card ${suitClass}`;
         
         if (index === gameState.selectedCardIndex) {
             cardEl.classList.add('selected');
         }
         
+        // MODIFIED: Use Unicode symbols (♥, ♦, ♣, ♠) for visual cards
+        const suitSymbol = card.suit;
+        
         cardEl.innerHTML = `
             <div class="card-rank">${card.rank}</div>
-            <div class="card-suit">${card.suit}</div>
+            <div class="card-suit ${suitClass}">${suitSymbol}</div>
             <div class="card-rank">${card.rank}</div>
         `;
         
@@ -547,11 +599,12 @@ function renderPlayedCards(playedCards) {
     container.innerHTML = '';
     
     playedCards.forEach(([playerIndex, card]) => {
+        const suitClass = getSuitClass(card.suit);
         const cardEl = document.createElement('div');
-        cardEl.className = `played-card ${getSuitClass(card.suit)}`;
+        cardEl.className = `played-card ${suitClass}`;
         cardEl.innerHTML = `
             <div class="card-rank">${card.rank}</div>
-            <div class="card-suit">${card.suit}</div>
+            <div class="card-suit ${suitClass}">${card.suit}</div>
         `;
         container.appendChild(cardEl);
     });
@@ -598,6 +651,57 @@ function showGameOverModal(data) {
     
     modal.classList.remove('hidden');
 }
+
+// === DEVELOPER MODE FUNCTIONS ===
+/**
+ * Sends a POST request to reset the game state on the server.
+ */
+function resetGameDev() {
+    if (confirm("Are you sure you want to reset the game state? All progress will be lost.")) {
+        fetch('/dev/reset', { method: 'POST' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server responded with an error.');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data.message);
+                // Reload the page to load the new, fresh game state
+                window.location.reload(); 
+            })
+            .catch(error => {
+                console.error('Error resetting game:', error);
+                alert('Failed to reset game state. Check the server logs.');
+            });
+    }
+}
+
+/**
+ * Switches the active player session in developer mode.
+ * @param {string} newPlayerId The ID of the player to switch to.
+ */
+function switchPlayerDev(newPlayerId) {
+    if (!newPlayerId) return;
+
+    fetch(`/dev/switch_player/${newPlayerId}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Server responded with an error.');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log(data.message);
+            // Reload the page to display the new player's hand and UI
+            window.location.reload(); 
+        })
+        .catch(error => {
+            console.error('Error switching player:', error);
+            alert('Failed to switch player. Check the server logs.');
+        });
+}
+// === END DEVELOPER MODE FUNCTIONS ===
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', init);
