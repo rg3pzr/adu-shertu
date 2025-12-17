@@ -517,6 +517,7 @@ input[type="text"]:focus {
     font-size: 2rem;
 }
 
+/* Card Specific Colors (Existing in provided code) */
 .card.hearts .card-rank,
 .card.hearts .card-suit {
     color: var(--hearts-color);
@@ -735,3 +736,61 @@ input[type="text"]:focus {
         font-size: 1.5rem;
     }
 }
+
+/* =======================================
+   == DEVELOPER MODE STYLES (NEW) ==
+   ======================================= */
+
+#developer-mode-info {
+    border: 2px solid red;
+    padding: 10px;
+    margin: 10px auto;
+    max-width: 800px;
+    background-color: #ffeaea; 
+    text-align: center;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);
+    font-family: monospace;
+    color: #cc0000;
+    z-index: 1000; 
+    position: relative;
+}
+
+#developer-mode-info h2 {
+    margin-top: 0;
+    font-size: 1.2em;
+}
+
+#developer-mode-info button,
+#developer-mode-info select,
+#developer-mode-info a {
+    margin: 0 5px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+/* Player Status Styles (for dev mode) */
+.player-card.disconnected {
+    opacity: 0.5;
+    background-color: #f0f0f0;
+    border-color: #ccc;
+    font-style: italic;
+}
+
+/* =======================================
+   == GLOBAL SUIT COLORS (NEW) ==
+   ======================================= */
+/* These ensure elements not named 'card.hearts' (like the trump display or played card text) get color */
+
+.hearts { color: var(--hearts-color); }
+.diamonds { color: var(--diamonds-color); }
+.clubs { color: var(--clubs-color); }
+.spades { color: var(--spades-color); }
+
+/* Ensure played cards have color */
+.played-card.hearts { color: var(--hearts-color); }
+.played-card.diamonds { color: var(--diamonds-color); }
+.played-card.clubs { color: var(--clubs-color); }
+.played-card.spades { color: var(--spades-color); }

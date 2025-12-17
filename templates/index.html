@@ -10,7 +10,7 @@
 <body>
     
     {% if developer_mode %}
-    <div id="developer-mode-info" style="border: 2px solid red; padding: 10px; margin: 10px; background-color: #ffeaea; text-align: center;">
+    <div id="developer-mode-info" style="border: 2px solid red; padding: 10px; margin: 10px auto; max-width: 800px; background-color: #ffeaea; text-align: center; border-radius: 8px; box-shadow: 0 0 10px rgba(255, 0, 0, 0.2);">
         <h2>*** DEVELOPER MODE ENABLED ***</h2>
         <p>
             <button onclick="resetGameDev()">Reset Game State</button>
@@ -22,8 +22,9 @@
             <label for="player-switcher">Active Player:</label>
             <select id="player-switcher" onchange="switchPlayerDev(this.value)">
                 {% for pid in all_player_ids %}
+                    {% set p = game_state.players | selectattr('id', 'equalto', pid) | first %}
                     <option value="{{ pid }}" {% if pid == current_player_id %}selected{% endif %}>
-                        {{ game_state.players | selectattr('id', 'equalto', pid) | first.name }} ({{ pid }})
+                        {{ p.name if p else 'N/A' }} ({{ pid }}) 
                     </option>
                 {% endfor %}
             </select>
