@@ -368,11 +368,13 @@ function updateGameState(state) {
 
 function getPhaseText(phase) {
     const phases = {
-        'waiting': 'Waiting...', 'stage1_trump_calling': 'Calling trump...',
-        'stage1_challenging': 'Stage 1: Challenges & Ready Check', // Updated
-        'stage2_challenging': 'Stage 2: Play or Challenge',        // Updated
-        'stage1_challenging': 'Stage 1 Challenges', 'playing_hand': 'Playing...',
-        'stage2_trump_selection': 'Select Trump (Joint)'
+        'waiting': 'Waiting for players...',
+        'stage1_trump_calling': 'Trump Calling Phase',
+        'stage1_challenging': 'Stage 1: Challenges & Ready Check',
+        'stage2_challenging': 'Stage 2: Play or Challenge',
+        'playing_hand': 'Playing Cards...',
+        'stage2_trump_selection': 'Joint Caller selecting Trump',
+        'game_over': 'Game Over'
     };
     return phases[phase] || phase;
 }
@@ -430,15 +432,28 @@ function renderMyCards() {
     const container = document.getElementById('your-cards');
     if (!container) return;
     container.innerHTML = '';
-    const suitMap = {'♥':'H','♦':'D','♣':'C','♠':'S','\u2665':'H','\u2666':'D','\u2663':'C','\u2660':'S'};
+    
+    // Map symbols and codes to Letters for guaranteed display
+    const suitMap = {
+        '♥':'H', '♦':'D', '♣':'C', '♠':'S',
+        '\u2665':'H', '\u2666':'D', '\u2663':'C', '\u2660':'S'
+    };
+
+    if (!gameState.myCards || gameState.myCards.length === 0) {
+        console.log("Rendering empty hand - no cards in gameState");
+        return;
+    }
 
     gameState.myCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
         const suitClass = getSuitClass(card.suit);
         cardEl.className = `card ${suitClass} ${index === gameState.selectedCardIndex ? 'selected' : ''}`;
+        
+        const displaySuit = suitMap[card.suit] || card.suit;
+        
         cardEl.innerHTML = `
             <div class="card-rank">${card.rank}</div>
-            <div class="card-suit">${suitMap[card.suit] || card.suit}</div>
+            <div class="card-suit">${displaySuit}</div>
             <div class="card-rank">${card.rank}</div>
         `;
         cardEl.onclick = () => handleCardClick(index);

@@ -72,7 +72,19 @@
     <div id="game-screen" class="screen">
         <div class="game-header">
             <div class="okalu-display">
+                <div class="team-okalu team-0">
+                    <span class="team-label">Team 1</span>
+                    <span class="okalu-value" id="team-0-okalu">0</span>
                 </div>
+                <div class="current-game-okalu">
+                    <span class="game-label">Current Game</span>
+                    <span class="okalu-value" id="current-okalu">0</span>
+                </div>
+                <div class="team-okalu team-1">
+                    <span class="team-label">Team 2</span>
+                    <span class="okalu-value" id="team-1-okalu">0</span>
+                </div>
+            </div>
             
             <div class="trump-display">
                 <span id="trump-suit" class="trump-suit">?</span>
@@ -92,11 +104,37 @@
         </div>
 
         <div class="game-table">
-            <div class="player-position pos-top"><div class="player-info" id="player-3"><span class="player-name">Player 4</span><div class="player-cards"><span class="card-count">0</span> cards</div></div></div>
-            <div class="player-position pos-top-left"><div class="player-info" id="player-2"><span class="player-name">Player 3</span><div class="player-cards"><span class="card-count">0</span> cards</div></div></div>
-            <div class="player-position pos-top-right"><div class="player-info" id="player-4"><span class="player-name">Player 5</span><div class="player-cards"><span class="card-count">0</span> cards</div></div></div>
-            <div class="player-position pos-left"><div class="player-info" id="player-1"><span class="player-name">Player 2</span><div class="player-cards"><span class="card-count">0</span> cards</div></div></div>
-            <div class="player-position pos-right"><div class="player-info" id="player-5"><span class="player-name">Player 6</span><div class="player-cards"><span class="card-count">0</span> cards</div></div></div>
+            <div class="player-position pos-top">
+                <div class="player-info" id="player-3">
+                    <span class="player-name"></span>
+                    <div class="player-cards"><span class="card-count">0</span> cards</div>
+                </div>
+            </div>
+            <div class="player-position pos-top-left">
+                <div class="player-info" id="player-2">
+                    <span class="player-name"></span>
+                    <div class="player-cards"><span class="card-count">0</span> cards</div>
+                </div>
+            </div>
+            <div class="player-position pos-top-right">
+                <div class="player-info" id="player-4">
+                    <span class="player-name"></span>
+                    <div class="player-cards"><span class="card-count">0</span> cards</div>
+                </div>
+            </div>
+            <div class="player-position pos-left">
+                <div class="player-info" id="player-1">
+                    <span class="player-name"></span>
+                    <div class="player-cards"><span class="card-count">0</span> cards</div>
+                </div>
+            </div>
+            <div class="player-position pos-right">
+                <div class="player-info" id="player-5">
+                    <span class="player-name"></span>
+                    <div class="player-cards"><span class="card-count">0</span> cards</div>
+                </div>
+            </div>
+            <div id="player-0" class="hidden"></div>
 
             <div class="playing-area">
                 <div id="played-cards" class="played-cards"></div>
@@ -126,22 +164,23 @@
                 <button id="pass-trump-btn" class="btn btn-secondary">Pass</button>
                 <button id="call-joint-btn" class="btn btn-accent">Call Joint</button>
             </div>
+
             <div id="challenge-actions" class="action-group hidden">
                 <h3>Challenge</h3>
-                <h3>Challenge</h3>
-            <div class="challenge-buttons">
-                <button id="adu-btn" class="btn btn-challenge">Adu</button>
-                <button id="shertu-btn" class="btn btn-challenge">Shertu</button>
-                <button id="double-btn" class="btn btn-challenge">Double</button>
-                <button id="shubble-btn" class="btn btn-challenge">Shubble</button>
+                <div class="challenge-buttons">
+                    <button id="adu-btn" class="btn btn-challenge">Adu</button>
+                    <button id="shertu-btn" class="btn btn-challenge">Shertu</button>
+                    <button id="double-btn" class="btn btn-challenge">Double</button>
+                    <button id="shubble-btn" class="btn btn-challenge">Shubble</button>
+                </div>
+
+                <div id="ready-status-container" class="hidden" style="margin-top: 15px; text-align: center;">
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Waiting for everyone to continue...</p>
+                    <div id="ready-players-list" class="ready-grid"></div>
+                </div>
+                <button id="proceed-stage2-btn" class="btn btn-primary hidden">Ready for Stage 2</button>
             </div>
 
-            <div id="ready-status-container" class="hidden" style="margin-top: 15px; text-align: center;">
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">Waiting for everyone to continue...</p>
-                <div id="ready-players-list" class="ready-grid"></div>
-            </div>
-                <button id="proceed-stage2-btn" class="btn btn-primary hidden">Continue to Stage 2</button>
-            </div>
             <div id="challenge-response-actions" class="action-group hidden">
                 <h3>Respond to Challenge</h3>
                 <div class="button-group">
@@ -149,12 +188,24 @@
                     <button id="fold-btn" class="btn btn-danger">Fold</button>
                 </div>
             </div>
+
             <div id="joint-trump-selection" class="action-group hidden">
                 <h3>Select Trump Suit</h3>
                 <div class="suit-buttons" id="joint-suit-buttons"></div>
             </div>
         </div>
         <div id="status-messages" class="status-messages"></div>
+    </div>
+
+    <div id="challenge-poll-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Challenge Opportunity</h3>
+            <p id="poll-text">Opponent has called Trump. Will your team challenge (Adu)?</p>
+            <div class="button-group">
+                <button onclick="sendPollResponse('yes')" class="btn btn-challenge">YES (ADU)</button>
+                <button onclick="sendPollResponse('no')" class="btn btn-secondary">NO (PASS)</button>
+            </div>
+        </div>
     </div>
 
     <div id="game-over-modal" class="modal hidden">
@@ -166,6 +217,7 @@
     </div>
 
     <script src="{{ url_for('static', filename='game.js') }}"></script>
+    
     {% if developer_mode %}
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -173,15 +225,16 @@
                 try {
                     {% set game_state_json = game_state | tojson | safe %}
                     const initialGameState = {{ game_state_json }};
+                    
                     gameState.myPlayerId = "{{ current_player_id }}";
                     gameState.game_state = initialGameState;
                     gameState.myCards = initialGameState.my_cards || []; 
 
                     socket.emit('join_game', { 
-                    game_code: "DEVGAME", 
-                    player_id: gameState.myPlayerId, // <-- Passes dev_player_x
-                    player_name: "Dev Mode" 
-                });
+                        game_code: "DEVGAME", 
+                        player_id: gameState.myPlayerId,
+                        player_name: "Dev Mode" 
+                    });
                     
                     showScreen('game');
                     updateGameState(initialGameState); 
