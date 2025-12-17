@@ -853,3 +853,41 @@ input[type="text"]:focus {
     min-height: 10px;
     min-width: 10px;
 }
+
+/* --- CRITICAL VISIBILITY OVERRIDE --- */
+
+/* Ensure the hand container is actually tall enough to be seen */
+.your-cards-container {
+    display: flex !important;
+    min-height: 120px !important;
+    padding: 10px !important;
+    visibility: visible !important;
+    background: rgba(255, 255, 255, 0.1); /* Faint highlight of the area */
+}
+
+/* Force cards to have a physical shape and visible colors */
+.card, .small-card, .played-card {
+    background-color: white !important;
+    border: 2px solid black !important; /* Thick black border */
+    color: black !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    box-shadow: 3px 3px 5px rgba(0,0,0,0.5) !important;
+}
+
+/* Ensure Rank and Suit text are visible inside the cards */
+.card-rank, .card-suit {
+    color: inherit; /* Fallback to black */
+    display: block !important;
+    visibility: visible !important;
+}
+
+/* Force colors for suits */
+.hearts, .diamonds {
+    color: #ef4444 !important; /* Red */
+}
+
+.clubs, .spades {
+    color: #000000 !important; /* Black */
+}
