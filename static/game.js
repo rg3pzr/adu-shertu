@@ -297,19 +297,23 @@ function updatePlayersList(players) {
 }
 
 function updateGameState(state) {
+    if (!state) return;
     gameState.game_state = state;
+
+    // Update global game info
     document.getElementById('team-0-okalu').textContent = state.team_okalu[0];
     document.getElementById('team-1-okalu').textContent = state.team_okalu[1];
     document.getElementById('current-okalu').textContent = state.current_game_okalu;
-    
-    const trumpEl = document.getElementById('trump-suit');
-    if (state.trump_suit) {
-        trumpEl.innerHTML = `<span class="${getSuitClass(state.trump_suit)}">${state.trump_suit}</span>`;
-    } else { trumpEl.textContent = '?'; }
+    document.getElementById('game-phase').textContent = getPhaseText(state.phase);
 
-    // === NEW: PERSISTENT TRUMP INFO ===
+    // Sync cards
+    if (state.my_cards) {
+        gameState.myCards = state.my_cards;
+    }
+
+    // Safety check for Trump Info
     const trumpBox = document.getElementById('active-trump-info');
-    if (state.trump_suit && state.trump_caller_index !== null) {
+    if (state.trump_suit && state.trump_caller_index !== null && state.players[state.trump_caller_index]) {
         trumpBox.classList.remove('hidden');
         document.getElementById('display-trump-suit').innerHTML = 
             `<span class="${getSuitClass(state.trump_suit)}">${state.trump_suit}</span>`;
@@ -319,52 +323,30 @@ function updateGameState(state) {
         trumpBox.classList.add('hidden');
     }
 
-    // === NEW: PERSISTENT CHALLENGE INFO ===
-    const challengeBox = document.getElementById('active-challenge-info');
-    if (state.challenge_type) {
-        challengeBox.classList.remove('hidden');
-        document.getElementById('display-challenge-type').textContent = 
-            state.challenge_type.toUpperCase();
-    } else {
-        challengeBox.classList.add('hidden');
-    }
-
-    // === NEW: CONSENSUS READY DOTS ===
-    const readyContainer = document.getElementById('ready-status-container');
-    if (state.phase === 'stage1_challenging' || state.phase === 'stage2_challenging') {
-        readyContainer.classList.remove('hidden');
-        const list = document.getElementById('ready-players-list');
-        list.innerHTML = '';
-        
-        state.players.forEach(p => {
-            const dot = document.createElement('div');
-            // Check if player's ID is in the ready_players list from server
-            const isReady = state.ready_players && state.ready_players.includes(p.id);
-            dot.className = `ready-dot ${isReady ? 'done' : ''}`;
-            dot.title = p.name;
-            list.appendChild(dot);
-        });
-    } else {
-        readyContainer.classList.add('hidden');
-    }
-
-    document.getElementById('game-phase').textContent = getPhaseText(state.phase);
-    document.getElementById('team-0-score').textContent = state.points_scored[0];
-    document.getElementById('team-1-score').textContent = state.points_scored[1];
-    document.getElementById('current-hand').textContent = state.current_hand_number + 1;
-
+    // Update other players on the table
     state.players.forEach((p, i) => {
         const el = document.getElementById(`player-${i}`);
-        if (el) {
-            el.querySelector('.player-name').textContent = p.name;
-            el.querySelector('.card-count').textContent = p.card_count;
+        
+        // ONLY update if the element exists (this prevents the null error for player-0)
+        if (el && !el.classList.contains('hidden')) {
+            const nameEl = el.querySelector('.player-name');
+            const countEl = el.querySelector('.card-count');
+            
+            if (nameEl) nameEl.textContent = p.name;
+            if (countEl) countEl.textContent = p.card_count;
+            
             el.classList.toggle('active', i === state.current_player_index);
             el.classList.toggle('dealer', i === state.dealer_index);
-            if (p.id !== gameState.myPlayerId && p.cards) renderOpponentHandDev(p.id, p.cards);
+
+            // Dev Mode: Show opponent cards
+            if (p.id !== gameState.myPlayerId && p.cards) {
+                renderOpponentHandDev(p.id, p.cards);
+            }
         }
     });
+
+    renderMyCards();
     updateActionPanels(state);
-    if (state.current_hand_cards) renderPlayedCards(state.current_hand_cards);
 }
 
 function getPhaseText(phase) {
