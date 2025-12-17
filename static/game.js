@@ -571,37 +571,30 @@ function hideChallengeResponseActions() {
 
 function renderMyCards() {
     const container = document.getElementById('your-cards');
+    if (!container) {
+        console.error("CRITICAL: Container 'your-cards' not found!");
+        return;
+    }
     container.innerHTML = '';
-
-    const suitSymbol = card.suit || 'X';
-    const rankText = card.rank || '?';
-
-    
     
     gameState.myCards.forEach((card, index) => {
         const cardEl = document.createElement('div');
-        // MODIFIED: Use the suit symbol directly for the card icon display
+        
+        // Map Unicode to Letters for guaranteed visibility
+        const suitMap = {'♥':'H', '♦':'D', '♣':'C', '♠':'S', '\u2665':'H', '\u2666':'D', '\u2663':'C', '\u2660':'S'};
+        const safeSuit = suitMap[card.suit] || card.suit;
         const suitClass = getSuitClass(card.suit);
         
         cardEl.className = `card ${suitClass}`;
+        if (index === gameState.selectedCardIndex) cardEl.classList.add('selected');
         
-        if (index === gameState.selectedCardIndex) {
-            cardEl.classList.add('selected');
-        }
-        
-        // MODIFIED: Use Unicode symbols (♥, ♦, ♣, ♠) for visual cards
-        
-        const suitSymbol = card.suit || 'X';
-        const rankText = card.rank || '?';
-
         cardEl.innerHTML = `
-            <div class="card-rank">${rankText}</div>
-            <div class="card-suit ${suitClass}">${suitSymbol}</div>
-            <div class="card-rank">${rankText}</div>
+            <div class="card-rank" style="color:black;">${card.rank}</div>
+            <div class="card-suit ${suitClass}" style="font-size:20px;">${safeSuit}</div>
+            <div class="card-rank" style="color:black;">${card.rank}</div>
         `;
         
         cardEl.addEventListener('click', () => handleCardClick(index));
-        
         container.appendChild(cardEl);
     });
 }
