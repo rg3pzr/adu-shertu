@@ -460,6 +460,11 @@ function updateGameState(state) {
             } else {
                 playerEl.classList.remove('dealer');
             }
+            // === NEW DEV MODE HAND DISPLAY LOGIC ===
+            if (player.id !== gameState.myPlayerId && player.cards && player.cards.length > 0) {
+                renderOpponentHandDev(player.id, player.cards);
+            }
+            // =======================================
         }
     });
     
@@ -700,6 +705,38 @@ function switchPlayerDev(newPlayerId) {
             console.error('Error switching player:', error);
             alert('Failed to switch player. Check the server logs.');
         });
+}
+
+/**
+ * Renders the hand of a specific player (used for Dev Mode visibility).
+ * @param {string} playerId The ID of the player whose hand to render.
+ * @param {Array<Object>} cards The cards array for that player.
+ */
+function renderOpponentHandDev(playerId, cards) {
+    const playerContainerId = `player-${gameState.game_state.players.findIndex(p => p.id === playerId)}`;
+    const playerEl = document.getElementById(playerContainerId);
+    
+    if (playerEl) {
+        let handEl = playerEl.querySelector('.opponent-hand');
+        if (!handEl) {
+            handEl = document.createElement('div');
+            handEl.className = 'opponent-hand';
+            playerEl.appendChild(handEl);
+        }
+        
+        handEl.innerHTML = '';
+        cards.forEach(card => {
+            const cardEl = document.createElement('div');
+            const suitClass = getSuitClass(card.suit);
+            cardEl.className = `played-card small-card ${suitClass}`; // Reusing played-card for small display
+            
+            cardEl.innerHTML = `
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit ${suitClass}">${card.suit}</div>
+            `;
+            handEl.appendChild(cardEl);
+        });
+    }
 }
 // === END DEVELOPER MODE FUNCTIONS ===
 

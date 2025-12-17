@@ -57,7 +57,7 @@ class GamePhase(Enum):
     GAME_OVER = "game_over"  # Game finished
 
 class AduShertuGame:
-    def __init__(self, game_code: str):
+    def __init__(self, game_code: str, is_dev_game: bool = False):
         self.game_code = game_code
         self.players: List[Dict] = []  # List of player dicts with id, name, team, cards, etc.
         self.phase = GamePhase.WAITING
@@ -98,6 +98,8 @@ class AduShertuGame:
         # Stage 1 trump calling
         self.stage1_round = 1  # Track which round of trump calling (1 or 2)
         self.trump_calling_index = 0  # Track whose turn to call trump
+
+        self.is_dev_game = is_dev_game
         
     def add_player(self, player_id: str, player_name: str) -> bool:
         """Add a player to the game. Returns True if successful."""
@@ -851,6 +853,24 @@ class AduShertuGame:
             "joint_called": self.joint_called,
             "joint_caller_index": self.joint_caller_index # NEW
         }
+
+        # --- MODIFIED PLAYER LIST GENERATION ---
+        state["players"] = []
+        for p in self.players:
+            player_data = {
+                "id": p["id"],
+                "name": p["name"],
+                "team": p["team"],
+                "card_count": len(p["cards"]),
+                "connected": p.get("connected", True)
+            }
+            
+            # If in Developer Mode, or if the client is the active player, expose cards
+            if self.is_dev_game or p["id"] == player_id: # MODIFIED
+                player_data["cards"] = [c.to_dict() for c in p["cards"]]
+            
+            state["players"].append(player_data)
+        # --- END MODIFIED PLAYER LIST GENERATION ---
         
         # Add player-specific info if player_id provided
         if player_id:

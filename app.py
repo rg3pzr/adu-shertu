@@ -35,7 +35,7 @@ active_games: Dict[str, AduShertuGame] = {}
 # NEW: Global Game State for Developer Mode (SINGLE INSTANCE)
 DEV_GAME_CODE = "DEVGAME"
 if DEVELOPER_MODE and DEV_GAME_CODE not in active_games:
-    active_games[DEV_GAME_CODE] = AduShertuGame(DEV_GAME_CODE)
+    active_games[DEV_GAME_CODE] = AduShertuGame(DEV_GAME_CODE, is_dev_game=True)
 
 # Store player connections: {session_id: (game_code, player_id)}
 player_connections: Dict[str, tuple] = {}
@@ -76,6 +76,17 @@ def index():
             player_data = next((p for p in game_state.players if p['id'] == player_id), None)
             if player_data:
                  player_data['connected'] = True
+
+        # === NEW: AUTO-START THE GAME ===
+        if len(game_state.players) == 6 and game_state.phase.value == 'waiting':
+            try:
+                game_state.start_game()
+                print("DEBUG: Dev game auto-started successfully.")
+            except ValueError as e:
+                # This catches the error if you try to start without 6 players, but 
+                # shouldn't happen here if player creation is correct.
+                print(f"DEBUG: Error auto-starting dev game: {e}")
+        # ================================
 
         # Render the template with the necessary dev variables
         return render_template(
