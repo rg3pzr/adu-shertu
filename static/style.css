@@ -779,6 +779,45 @@ input[type="text"]:focus {
     font-style: italic;
 }
 
+/* Container for opponent cards in Dev Mode */
+.opponent-hand {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* Specific styling for the small debug cards */
+.small-card {
+    width: 35px !important;   /* Force smaller size */
+    height: 50px !important;
+    min-width: 35px;
+    background: #ffffff !important;
+    border: 1px solid #333 !important; /* Dark border to make it visible */
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.3) !important;
+    z-index: 100;
+}
+
+.small-card .card-rank {
+    font-size: 0.7rem !important;
+    font-weight: bold;
+}
+
+.small-card .card-suit {
+    font-size: 1rem !important;
+}
+
+/* Ensure your main hand cards have a visible border */
+.card {
+    border: 1px solid #000 !important;
+}
+
 /* =======================================
    == GLOBAL SUIT COLORS (NEW) ==
    ======================================= */

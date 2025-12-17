@@ -620,7 +620,12 @@ function getSuitClass(suit) {
         '♥': 'hearts',
         '♦': 'diamonds',
         '♣': 'clubs',
-        '♠': 'spades'
+        '♠': 'spades',
+        // Support for Unicode escapes if they arrive that way
+        '\u2665': 'hearts',
+        '\u2666': 'diamonds',
+        '\u2663': 'clubs',
+        '\u2660': 'spades'
     };
     return suitMap[suit] || '';
 }
