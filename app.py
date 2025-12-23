@@ -249,12 +249,37 @@ def handle_start_game(data):
     except ValueError as e:
         emit('error', {'message': str(e)})
 
+@socketio.on('finalize_trump_selection')
+def handle_finalize_trump_selection(data):
+    game_code, player_id = player_connections[request.sid]
+    game = active_games[game_code]
+    player_index = next(i for i, p in enumerate(game.players) if p['id'] == player_id)
+    
+    result = game.finalize_trump_call_selection(player_index, data['suit'], data['calling_card'])
+    
+    if result['success']:
+        # Broadcast the replacement to everyone
+        socketio.emit('card_replaced', result, room=game_code)
+        socketio.emit('game_state_update', {'game_state': game.get_game_state()}, room=game_code)
+    else:
+        emit('error', result)
+
 @socketio.on('call_trump')
 def handle_call_trump(data):
-    """Handle trump calling."""
-    if request.sid not in player_connections:
-        emit('error', {'message': 'Not in a game'})
-        return
+    # ... (standard checks) ...
+    result = game.attempt_trump_call(player_index, suit)
+    
+    if result.get('requires_card_choice'):
+        # Send ONLY to the player who needs to make the choice
+        emit('trump_choice_required', result)
+    elif result['success']:
+        # Broadcast to everyone else
+        socketio.emit('trump_called', {
+            'player_index': player_index,
+            'player_name': game.players[player_index]['name'],
+            'trump_suit': result['trump_suit'],
+            'game_state': game.get_game_state()
+        }, room=game_code)
     
     game_code, player_id = player_connections[request.sid]
     game = active_games[game_code]

@@ -66,6 +66,7 @@ function init() {
     socket.on('card_replaced', handleCardReplaced);
     socket.on('stage2_started', handleStage2Started);
     socket.on('trump_selected_joint', handleTrumpSelectedJoint);
+    socket.on('trump_choice_required', handleTrumpCalled);
     
     // Trump calling action buttons
     document.querySelectorAll('.btn-suit').forEach(btn => {
@@ -138,6 +139,37 @@ function handleGameStateUpdate(data) {
 }
 
 function handleTrumpCalled(data) {
+    // If the server says a choice is required (only happens for the caller)
+    if (data.requires_card_choice) {
+        const modal = document.getElementById('card-choice-modal');
+        const container = document.getElementById('choice-container');
+        container.innerHTML = '';
+        modal.classList.remove('hidden');
+
+        data.choices.forEach(card => {
+            const cardEl = document.createElement('div');
+            // Use your existing suit class logic
+            const suitClass = getSuitClass(card.suit);
+            cardEl.className = `card ${suitClass}`;
+            cardEl.innerHTML = `
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit">${card.suit}</div>
+                <div class="card-rank">${card.rank}</div>
+            `;
+            // When clicked, send the choice back to the server
+            cardEl.onclick = () => {
+                socket.emit('finalize_trump_selection', { 
+                    suit: data.suit, 
+                    calling_card: card 
+                });
+                modal.classList.add('hidden');
+            };
+            container.appendChild(cardEl);
+        });
+        return; // Stop here, we wait for the choice
+    }
+
+    // Standard logic if no choice is needed
     showStatus(`${data.player_name} called trump: ${data.trump_suit}`, 'success');
     updateGameState(data.game_state);
 }

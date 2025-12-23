@@ -206,34 +206,28 @@ class AduShertuGame:
             return {"success": False, "message": "Not in trump calling phase"}
         
         player = self.players[player_index]
+        # Filter for cards of the chosen suit
+        matching_cards = [c for c in player["cards"] if c.suit == suit]
         
-        # NEW LOGIC: Check if player has ANY card of that suit
-        has_suit = any(c.suit == suit for c in player["cards"])
-        if not has_suit:
-            return {"success": False, "message": f"You don't have any {suit.value} cards"}
-        
-        # Logic for same-suit replacement stays:
-        # Check if they have two cards of the same suit
-        suits_in_hand = [c.suit for c in player["cards"]]
-        if suits_in_hand.count(suit) > 1:
-            self.trump_suit = suit
-            self.trump_caller_index = player_index
-            # Find one card of that suit to show and replace
-            card_to_show = next(c for c in player["cards"] if c.suit == suit)
+        if not matching_cards:
+            return {"success": False, "message": "You don't have that suit"}
+
+        # If they have 2 of the suit, we must ask which one to keep
+        if len(matching_cards) > 1:
             return {
                 "success": True,
-                "requires_replacement": True,
-                "card_to_replace": card_to_show.to_dict(),
-                "trump_suit": suit.value
+                "requires_card_choice": True,
+                "choices": [c.to_dict() for c in matching_cards],
+                "suit": suit.value,
+                "message": "You have two of this suit. Which card are you calling trump on?"
             }
 
-        # Valid call
+        # Standard call (only 1 card of that suit)
         self.trump_suit = suit
         self.trump_caller_index = player_index
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu
         self.phase = GamePhase.STAGE1_CHALLENGING
-        
         return {"success": True, "trump_suit": suit.value}
             
     
@@ -381,6 +375,49 @@ class AduShertuGame:
             "replacements_shown": [c.to_dict() for c in replacements_shown],
             "final_card": new_card.to_dict(),
             "game_state": self.get_game_state() # Include state so UI updates to Challenging
+        }
+    def finalize_trump_call_selection(self, player_index: int, suit_val: str, calling_card_dict: Dict) -> Dict:
+        player = self.players[player_index]
+        suit = Suit(suit_val)
+        
+        # Identify the 'calling card' and the 'other card'
+        other_card = None
+        for c in player["cards"]:
+            if c.suit == suit and (c.rank.value != calling_card_dict['rank']):
+                other_card = c
+                break
+        
+        if not other_card:
+            return {"success": False, "message": "Could not identify card to replace"}
+
+        # Remove the illegal 'other card' and discard it
+        player["cards"].remove(other_card)
+        self.discarded_cards.append(other_card)
+        
+        # Draw replacement
+        replacements_shown = []
+        new_card = None
+        while True:
+            new_card = self.deck.pop()
+            replacements_shown.append(new_card)
+            if new_card.suit != suit:
+                player["cards"].append(new_card)
+                break
+            else:
+                self.discarded_cards.append(new_card)
+
+        # Finalize Call
+        self.trump_suit = suit
+        self.trump_caller_index = player_index
+        self.base_okalu = self._calculate_base_okalu(player_index)
+        self.current_game_okalu = self.base_okalu
+        self.phase = GamePhase.STAGE1_CHALLENGING
+        
+        return {
+            "success": True,
+            "discarded": other_card.to_dict(),
+            "replacements_shown": [c.to_dict() for c in replacements_shown],
+            "final_card": new_card.to_dict()
         }
 
     def _calculate_base_okalu(self, trump_caller_index: int) -> int:
