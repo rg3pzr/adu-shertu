@@ -469,10 +469,15 @@ def handle_proceed_stage2(data):
     }, room=game_code)
     
     if all_ready:
-        # Now that everyone is ready, the game_state internally dealt the cards.
-        # We broadcast stage2_started so the frontend knows to refresh hands.
+        # We broadcast to the room that Stage 2 started
+        # IMPORTANT: Since cards are private, we emit a general update 
+        # but the client needs to know to refresh their specific hand.
         socketio.emit('stage2_started', {
             'game_state': game.get_game_state() 
+        }, room=game_code)
+    else:
+        socketio.emit('game_state_update', {
+            'game_state': game.get_game_state()
         }, room=game_code)
         
         # Log it for the dev console

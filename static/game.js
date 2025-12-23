@@ -214,10 +214,22 @@ function handleCardReplaced(data) {
 }
 
 function handleStage2Started(data) {
-    gameState.myCards = data.game_state.my_cards || [];
+    console.log("Stage 2 Event Received", data);
+    
+    // Update local state
+    gameState.game_state = data.game_state;
+    
+    // Find "ME" in the players list to get my new cards
+    const me = data.game_state.players.find(p => p.id === gameState.myPlayerId);
+    if (me && me.cards) {
+        gameState.myCards = me.cards;
+    }
+    
+    // Force a full UI refresh
     updateGameState(data.game_state);
     renderMyCards();
-
+    
+    showStatus('Stage 2 Started! You now have 4 cards.', 'success');
 }
 
 function handleTrumpSelectedJoint(data) {
@@ -299,6 +311,11 @@ function updatePlayersList(players) {
 function updateGameState(state) {
     if (!state) return;
     gameState.game_state = state;
+
+    const myData = state.players.find(p => p.id === gameState.myPlayerId);
+    if (myData && myData.cards) {
+        gameState.myCards = myData.cards;
+    }
 
     // Sync cards
     if (state.my_cards) {
