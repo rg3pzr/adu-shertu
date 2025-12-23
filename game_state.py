@@ -205,57 +205,40 @@ class AduShertuGame:
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
             return {"success": False, "message": "Not in trump calling phase"}
         
-        if player_index != self.trump_calling_index:
-            return {"success": False, "message": "Not your turn to call trump"}
-        
         player = self.players[player_index]
         
-        # 1. Find the specific 9 being used to call trump
-        trump_nine = next((c for c in player["cards"] if c.rank == Rank.NINE and c.suit == suit), None)
-        if not trump_nine:
-            return {"success": False, "message": "You don't have the 9 of that suit"}
+        # NEW LOGIC: Check if player has ANY card of that suit
+        has_suit = any(c.suit == suit for c in player["cards"])
+        if not has_suit:
+            return {"success": False, "message": f"You don't have any {suit.value} cards"}
         
-        # 2. Lock in the trump call immediately
+        # Logic for same-suit replacement stays:
+        # Check if they have two cards of the same suit
+        suits_in_hand = [c.suit for c in player["cards"]]
+        if suits_in_hand.count(suit) > 1:
+            self.trump_suit = suit
+            self.trump_caller_index = player_index
+            # Find one card of that suit to show and replace
+            card_to_show = next(c for c in player["cards"] if c.suit == suit)
+            return {
+                "success": True,
+                "requires_replacement": True,
+                "card_to_replace": card_to_show.to_dict(),
+                "trump_suit": suit.value
+            }
+
+        # Valid call
         self.trump_suit = suit
         self.trump_caller_index = player_index
-
-        # 3. Find the "Other" card (the one that isn't the 9 used to call)
-        # We remove one instance of the trump 9 to see what's left
-        temp_cards = player["cards"].copy()
-        temp_cards.remove(trump_nine)
-        other_card = temp_cards[0] # In Stage 1, there is only 1 other card
-        
-        if other_card.suit == suit:
-            # DO NOT move to challenging yet. Stay in a state that awaits replacement.
-            # We don't deal Stage 2 yet because the caller's hand is invalid.
-            self.trump_suit = suit # Set this so no one else can call
-            self.trump_caller_index = player_index
-            return {
-                "success": True, # It's a successful 'start' to a call
-                "requires_replacement": True,
-                "card_to_replace": other_card.to_dict(),
-                "trump_suit": suit.value,
-                "message": "Other card is same suit, must show and replace"
-            }
-        
-        # 4. Valid call with no replacement needed
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu
-        
-        # Transition the game state
         self.phase = GamePhase.STAGE1_CHALLENGING
         
-        return {
-            "success": True,
-            "requires_replacement": False,
-            "trump_suit": suit.value,
-            "base_okalu": self.base_okalu,
-            "message": f"Trump called: {suit.value}"
-        }
+        return {"success": True, "trump_suit": suit.value}
             
     
     def attempt_joint_call(self, player_index: int) -> Dict: # MODIFIED: Removed suit arguments
-        """Attempt to call joint with two 9s."""
+        """Attempt to call joint with any pair of the same rank."""
         if self.phase != GamePhase.STAGE1_TRUMP_CALLING:
             return {"success": False, "message": "Not in trump calling phase"}
         
@@ -264,32 +247,33 @@ class AduShertuGame:
         
         player = self.players[player_index]
         
-        # Check if player has exactly two 9s in their 2-card hand
-        nines = [c for c in player["cards"] if c.rank == Rank.NINE]
-        
-        if len(nines) != 2:
-            return {"success": False, "message": "You must have two 9s to call joint."}
+        # NEW LOGIC: Joint on ANY pair (e.g., Q-Q, 10-10, A-A)
+        ranks = [c.rank for c in player["cards"]]
+        # A pair means there are 2 cards and both have the same rank
+        if len(ranks) != 2 or ranks[0] != ranks[1]:
+            return {"success": False, "message": "You need a pair of the same rank for Joint"}
         
         # Valid joint call
         self.joint_called = True
         self.trump_caller_index = player_index
-        self.joint_caller_index = player_index # NEW: Record joint caller index
+        self.joint_caller_index = player_index 
         self.base_okalu = self._calculate_base_okalu(player_index)
         self.current_game_okalu = self.base_okalu * 2  # Joint auto-doubles
         self.challenge_multiplier = 2
         
-        # Don't set trump yet, but deal remaining cards
+        # Deal remaining cards (everyone moves to 4 cards)
         self._deal_stage2()
         
-        # Set phase to wait for the joint caller to select trump
+        # Wait for caller to pick suit from their 4 cards
         self.phase = GamePhase.STAGE2_TRUMP_SELECTION
         
+        # Return ALL original fields so the frontend doesn't break
         return {
             "success": True,
             "joint_called": True,
             "base_okalu": self.base_okalu,
             "current_okalu": self.current_game_okalu,
-            "message": "Joint called! Choose trump after seeing all 4 cards"
+            "message": f"Joint called with a pair of {ranks[0].value}s!"
         }
     
     def pass_trump_call(self, player_index: int) -> Dict:

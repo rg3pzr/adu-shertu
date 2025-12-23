@@ -330,6 +330,13 @@ h1 {
     z-index: 100;
 }
 
+.btn-suit.grayed-out {
+    opacity: 0.2;
+    cursor: not-allowed;
+    filter: grayscale(1);
+    border-color: #ccc;
+}
+
 /* Utility */
 .hidden { display: none !important; }
 

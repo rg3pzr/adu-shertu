@@ -421,21 +421,26 @@ function updateActionPanels(state) {
     if (state.phase === 'stage1_trump_calling' && myIdx === state.trump_calling_index) {
         document.getElementById('trump-calling-actions').classList.remove('hidden');
 
-        // === JOINT VISIBILITY LOGIC ===
-        const jointBtn = document.getElementById('call-joint-btn');
-        if (jointBtn) {
-            // Count how many 9s are in the current hand
-            const nineCount = gameState.myCards.filter(card => card.rank === '9').length;
-            
-            if (nineCount >= 2) {
-                jointBtn.classList.remove('hidden');
-                jointBtn.style.display = "inline-block"; // Ensure it's not hidden by other CSS
+        // NEW: Gray out suits not in hand
+        const suitsInHand = gameState.myCards.map(c => c.suit);
+        document.querySelectorAll('.btn-suit').forEach(btn => {
+            const btnSuit = btn.dataset.suit;
+            // Map the button symbols to what's in the data
+            if (suitsInHand.includes(btnSuit)) {
+                btn.disabled = false;
+                btn.classList.remove('grayed-out');
             } else {
-                jointBtn.classList.add('hidden');
-                jointBtn.style.display = "none";
+                btn.disabled = true;
+                btn.classList.add('grayed-out');
             }
+        });
+
+        // Update Joint Button: Enable only if you have a pair
+        const jointBtn = document.getElementById('call-joint-btn');
+        if (gameState.myCards.length === 2) {
+            const isPair = gameState.myCards[0].rank === gameState.myCards[1].rank;
+            jointBtn.style.display = isPair ? "inline-block" : "none";
         }
-        // ==============================
     }
     if (state.phase === 'stage1_challenging') {
         document.getElementById('challenge-actions').classList.remove('hidden');
