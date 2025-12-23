@@ -201,6 +201,45 @@ h1 {
 .card-rank { font-size: 1.2rem; font-weight: 800; }
 .card-suit { font-size: 1.8rem; }
 
+/* Button Feedback */
+.btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+    filter: brightness(0.9);
+}
+
+/* Disabled state */
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Individual Player Ready Indicator (Top of Card) */
+.player-ready-tag {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: var(--success-color);
+    color: white;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 5;
+    display: none; /* Hidden by default */
+}
+
+.player-info {
+    position: relative; /* Needed for the ready tag positioning */
+}
+
 /* Opponent Hand (Dev Mode) */
 .opponent-hand {
     display: flex;

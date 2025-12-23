@@ -300,18 +300,18 @@ function updateGameState(state) {
     if (!state) return;
     gameState.game_state = state;
 
+    // Sync cards
+    if (state.my_cards) {
+        gameState.myCards = state.my_cards;
+    }
+
     // Update global game info
     document.getElementById('team-0-okalu').textContent = state.team_okalu[0];
     document.getElementById('team-1-okalu').textContent = state.team_okalu[1];
     document.getElementById('current-okalu').textContent = state.current_game_okalu;
     document.getElementById('game-phase').textContent = getPhaseText(state.phase);
 
-    // Sync cards
-    if (state.my_cards) {
-        gameState.myCards = state.my_cards;
-    }
-
-    // Safety check for Trump Info
+    // PERSISTENT TRUMP INFO
     const trumpBox = document.getElementById('active-trump-info');
     if (state.trump_suit && state.trump_caller_index !== null && state.players[state.trump_caller_index]) {
         trumpBox.classList.remove('hidden');
@@ -323,11 +323,19 @@ function updateGameState(state) {
         trumpBox.classList.add('hidden');
     }
 
-    // Update other players on the table
+    // PERSISTENT CHALLENGE INFO
+    const challengeBox = document.getElementById('active-challenge-info');
+    if (state.challenge_type) {
+        challengeBox.classList.remove('hidden');
+        document.getElementById('display-challenge-type').textContent = 
+            state.challenge_type.toUpperCase();
+    } else {
+        challengeBox.classList.add('hidden');
+    }
+
+    // Update table info and READY INDICATORS
     state.players.forEach((p, i) => {
         const el = document.getElementById(`player-${i}`);
-        
-        // ONLY update if the element exists (this prevents the null error for player-0)
         if (el && !el.classList.contains('hidden')) {
             const nameEl = el.querySelector('.player-name');
             const countEl = el.querySelector('.card-count');
@@ -338,12 +346,39 @@ function updateGameState(state) {
             el.classList.toggle('active', i === state.current_player_index);
             el.classList.toggle('dealer', i === state.dealer_index);
 
-            // Dev Mode: Show opponent cards
+            // NEW: Show "READY" tag on the player card if they are in state.ready_players
+            let readyTag = el.querySelector('.player-ready-tag');
+            if (!readyTag) {
+                readyTag = document.createElement('div');
+                readyTag.className = 'player-ready-tag';
+                readyTag.textContent = 'READY';
+                el.appendChild(readyTag);
+            }
+            
+            const isReady = state.ready_players && state.ready_players.includes(p.id);
+            readyTag.style.display = isReady ? 'block' : 'none';
+
             if (p.id !== gameState.myPlayerId && p.cards) {
                 renderOpponentHandDev(p.id, p.cards);
             }
         }
     });
+
+    // Update bottom dots container (Summary view)
+    const readyContainer = document.getElementById('ready-status-container');
+    if (state.phase.includes('challenging')) {
+        readyContainer.classList.remove('hidden');
+        const list = document.getElementById('ready-players-list');
+        list.innerHTML = '';
+        state.players.forEach(p => {
+            const dot = document.createElement('div');
+            const isReady = state.ready_players && state.ready_players.includes(p.id);
+            dot.className = `ready-dot ${isReady ? 'done' : ''}`;
+            list.appendChild(dot);
+        });
+    } else {
+        readyContainer.classList.add('hidden');
+    }
 
     renderMyCards();
     updateActionPanels(state);
@@ -416,14 +451,7 @@ function renderMyCards() {
     if (!container) return;
     container.innerHTML = '';
     
-    // Map symbols and codes to Letters for guaranteed display
-    const suitMap = {
-        '♥':'H', '♦':'D', '♣':'C', '♠':'S',
-        '\u2665':'H', '\u2666':'D', '\u2663':'C', '\u2660':'S'
-    };
-
     if (!gameState.myCards || gameState.myCards.length === 0) {
-        console.log("Rendering empty hand - no cards in gameState");
         return;
     }
 
@@ -432,11 +460,10 @@ function renderMyCards() {
         const suitClass = getSuitClass(card.suit);
         cardEl.className = `card ${suitClass} ${index === gameState.selectedCardIndex ? 'selected' : ''}`;
         
-        const displaySuit = suitMap[card.suit] || card.suit;
-        
+        // Use card.suit directly for actual symbols
         cardEl.innerHTML = `
             <div class="card-rank">${card.rank}</div>
-            <div class="card-suit">${displaySuit}</div>
+            <div class="card-suit">${card.suit}</div>
             <div class="card-rank">${card.rank}</div>
         `;
         cardEl.onclick = () => handleCardClick(index);
@@ -456,7 +483,10 @@ function renderPlayedCards(cards) {
 }
 
 function getSuitClass(suit) {
-    const map = {'♥':'hearts','♦':'diamonds','♣':'clubs','♠':'spades','\u2665':'hearts','\u2666':'diamonds','\u2663':'clubs','\u2660':'spades'};
+    const map = {
+        '♥':'hearts', '♦':'diamonds', '♣':'clubs', '♠':'spades',
+        '\u2665':'hearts', '\u2666':'diamonds', '\u2663':'clubs', '\u2660':'spades'
+    };
     return map[suit] || '';
 }
 
