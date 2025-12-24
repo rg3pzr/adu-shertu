@@ -251,10 +251,17 @@ def handle_start_game(data):
 
 @socketio.on('finalize_trump_selection')
 def handle_finalize_trump_selection(data):
+    if request.sid not in player_connections:
+        emit('error', {'message': 'Not in a game'})
+        return
     game_code, player_id = player_connections[request.sid]
     game = active_games[game_code]
-    player_index = next(i for i, p in enumerate(game.players) if p['id'] == player_id)
+    player_index = next((i for i, p in enumerate(game.players) if p['id'] == player_id), None)
     
+    if player_index is None:
+        emit('error', {'message': 'Player not found'})
+        return
+
     result = game.finalize_trump_call_selection(player_index, data['suit'], data['calling_card'])
     
     if result['success']:
@@ -262,24 +269,14 @@ def handle_finalize_trump_selection(data):
         socketio.emit('card_replaced', result, room=game_code)
         socketio.emit('game_state_update', {'game_state': game.get_game_state()}, room=game_code)
     else:
-        emit('error', result)
+        emit('error', {'message': result.get('message', 'Selection failed')})
 
 @socketio.on('call_trump')
 def handle_call_trump(data):
-    # ... (standard checks) ...
-    result = game.attempt_trump_call(player_index, suit)
-    
-    if result.get('requires_card_choice'):
-        # Send ONLY to the player who needs to make the choice
-        emit('trump_choice_required', result)
-    elif result['success']:
-        # Broadcast to everyone else
-        socketio.emit('trump_called', {
-            'player_index': player_index,
-            'player_name': game.players[player_index]['name'],
-            'trump_suit': result['trump_suit'],
-            'game_state': game.get_game_state()
-        }, room=game_code)
+    """Handle trump calling with selection and replacement logic."""
+    if request.sid not in player_connections:
+        emit('error', {'message': 'Not in a game'})
+        return
     
     game_code, player_id = player_connections[request.sid]
     game = active_games[game_code]
@@ -291,24 +288,32 @@ def handle_call_trump(data):
         return
     
     suit_str = data.get('suit')
-    suit = Suit(suit_str)
+    try:
+        suit = Suit(suit_str)
+    except ValueError:
+        emit('error', {'message': 'Invalid suit selection'})
+        return
     
+    # Perform the check/call
     result = game.attempt_trump_call(player_index, suit)
     
-    if result['success']:
-        # If it needs replacement, we tell the specific player
-        if result.get('requires_replacement'):
-            emit('card_replacement_required', result)
-            # Broadcast a general update so others know a call happened but replacement is pending
-            socketio.emit('game_state_update', {'game_state': game.get_game_state()}, room=game_code)
-        else:
-            # Standard success: Move everyone to Stage 1 Challenges
-            socketio.emit('trump_called', {
-                'player_index': player_index,
-                'player_name': game.players[player_index]['name'],
-                'trump_suit': result['trump_suit'],
-                'game_state': game.get_game_state()
-            }, room=game_code)
+    if result.get('requires_card_choice'):
+        # Scenario A: Player has two of the same suit, needs to pick one (Strategic Choice)
+        emit('trump_choice_required', result)
+        
+    elif result.get('requires_replacement'):
+        # Scenario B: Automatic replacement needed (Legacy logic compatibility)
+        emit('card_replacement_required', result)
+        socketio.emit('game_state_update', {'game_state': game.get_game_state()}, room=game_code)
+        
+    elif result['success']:
+        # Scenario C: Clean success, move to challenging phase
+        socketio.emit('trump_called', {
+            'player_index': player_index,
+            'player_name': game.players[player_index]['name'],
+            'trump_suit': result['trump_suit'],
+            'game_state': game.get_game_state()
+        }, room=game_code)
     else:
         emit('error', {'message': result.get('message', 'Failed to call trump')})
 
