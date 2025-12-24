@@ -415,33 +415,29 @@ def handle_replace_card(data):
 
 @socketio.on('challenge')
 def handle_challenge(data):
-    """Handle challenge calls (Adu, Shertu, Double, Shubble)."""
-    if request.sid not in player_connections:
-        emit('error', {'message': 'Not in a game'})
-        return
-    
+    if request.sid not in player_connections: return
     game_code, player_id = player_connections[request.sid]
     game = active_games[game_code]
     
     player_index = next((i for i, p in enumerate(game.players) if p['id'] == player_id), None)
-    if player_index is None:
-        emit('error', {'message': 'Player not found'})
-        return
-    
     challenge_word = data.get('challenge_word', '').lower()
+    
     result = game.attempt_challenge(player_index, challenge_word)
     
     if result['success']:
+        # BROADCAST to everyone so their buttons swap immediately
         socketio.emit('challenge_issued', {
-            'player_index': player_index,
-            'player_name': game.players[player_index]['name'],
+            'player_name': result['player_name'],
             'challenge_word': challenge_word,
-            'current_okalu': result['current_okalu'],
-            'awaiting_response': result.get('awaiting_response', False),
+            'game_state': game.get_game_state() # Crucial: send the fresh state
+        }, room=game_code)
+        
+        # Also send a general update just to be safe
+        socketio.emit('game_state_update', {
             'game_state': game.get_game_state()
         }, room=game_code)
     else:
-        emit('error', {'message': result.get('message', 'Failed to challenge')})
+        emit('error', {'message': result.get('message', 'Challenge failed')})
 
 @socketio.on('respond_challenge')
 def handle_respond_challenge(data):

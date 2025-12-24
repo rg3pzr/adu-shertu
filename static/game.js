@@ -204,7 +204,10 @@ function handleTrumpPassed(data) {
 
 function handleChallengeIssued(data) {
     showStatus(`${data.player_name} called ${data.challenge_word.toUpperCase()}!`, 'warning');
-    updateGameState(data.game_state);
+    // Ensure this line exists to refresh the UI buttons!
+    if (data.game_state) {
+        updateGameState(data.game_state);
+    }
 }
 
 function handleChallengeAccepted(data) {
@@ -551,7 +554,7 @@ function updateActionPanels(state) {
             }
         }
         // 3. Multiplier is 4 or higher: Use generic button for infinite doubling
-        else {
+        else if (currentMult >= 4) {
             if (myTeam !== state.last_challenger_team) {
                 genericChallengeBtn.classList.remove('hidden');
                 genericChallengeBtn.textContent = `Challenge x${currentMult * 2}`;

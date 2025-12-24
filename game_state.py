@@ -440,38 +440,43 @@ class AduShertuGame:
     
     def attempt_challenge(self, player_index: int, challenge_word: str) -> Dict:
         """
-        Handles back-and-forth challenges (Adu, Shertu, Challenge xN).
+        Handles strict back-and-forth: Adu -> Shertu -> Challenge xN.
         """
         player_team = self.players[player_index]["team"]
         initial_team = self.players[self.trump_caller_index]["team"]
 
         # 1. Back-and-Forth Validation
+        # If the last person to challenge was on YOUR team, you must wait.
         if self.last_challenger_team == player_team:
-            return {"success": False, "message": "Wait for the other team to respond or ready up."}
+            return {"success": False, "message": "Wait for the other team to respond."}
 
-        # 2. Sequential Validation
+        # 2. Sequential Word Validation
         if self.challenge_multiplier == 1:
             if player_team == initial_team:
-                return {"success": False, "message": "Only opposing team can call Adu."}
+                return {"success": False, "message": "Opponents must initiate Adu."}
             if challenge_word != "adu":
-                return {"success": False, "message": "First challenge must be 'Adu'."}
+                return {"success": False, "message": "First challenge must be 'adu'."}
         
-        # 3. Apply the Challenge
-        # Double the existing multiplier
+        elif self.challenge_multiplier == 2:
+            if challenge_word != "shertu":
+                return {"success": False, "message": "Second challenge must be 'shertu'."}
+
+        # 3. Apply state changes
         self.challenge_multiplier *= 2 
         self.current_game_okalu = self.base_okalu * self.challenge_multiplier
         self.last_challenger_team = player_team
         self.challenge_type = challenge_word
         
-        # Reset ready players: Every time someone raises the stakes, 
-        # everyone must click "Ready" again to confirm the new Okalu.
+        # CRITICAL: Reset ready players so everyone has to click 'Ready' again 
+        # for the new Okalu value.
         self.ready_players = []
 
         return {
             "success": True, 
             "current_okalu": self.current_game_okalu,
             "challenge_type": challenge_word,
-            "player_name": self.players[player_index]['name']
+            "player_name": self.players[player_index]['name'],
+            "game_state": self.get_game_state() # Ensure fresh state is returned
         }
     
     def respond_to_challenge(self, team: int, response: str) -> Dict:
