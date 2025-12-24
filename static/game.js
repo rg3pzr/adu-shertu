@@ -531,12 +531,14 @@ function updateActionPanels(state) {
         const aduBtn = document.getElementById('adu-btn');
         const shertuBtn = document.getElementById('shertu-btn');
         const genericChallengeBtn = document.getElementById('double-btn'); 
+        const shubbleBtn = document.getElementById('shubble-btn');
+
         
         // Check if I am already ready
         const amIReady = state.ready_players && state.ready_players.includes(gameState.myPlayerId);
 
         // Hide all challenge buttons initially
-        [aduBtn, shertuBtn, genericChallengeBtn].forEach(b => {
+        [aduBtn, shertuBtn, genericChallengeBtn, shubbleBtn].forEach(b => {
             if(b) b.classList.add('hidden');
         });
 
