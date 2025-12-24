@@ -204,6 +204,10 @@ def handle_join_game(data):
     
     # Store connection
     player_connections[request.sid] = (game_code, player_id)
+
+    socketio.emit('game_state_update', {
+        'game_state': game.get_game_state()
+    }, room=game_code)
     
     # Send success to joining player
     emit('join_success', {

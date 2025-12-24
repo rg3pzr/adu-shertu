@@ -281,7 +281,7 @@ class AduShertuGame:
         
         # The trump calling cycle ends at the dealer (whose turn it would be after player 5)
         # Note: The trump calling starts at (dealer + 1) % 6.
-        start_index = (self.dealer_index + 1) % 6
+        start_index = self.dealer_index
         
         if self.trump_calling_index == start_index:
             # All players passed, need to reshuffle/discard
