@@ -531,38 +531,35 @@ function updateActionPanels(state) {
         const aduBtn = document.getElementById('adu-btn');
         const shertuBtn = document.getElementById('shertu-btn');
         const genericChallengeBtn = document.getElementById('double-btn'); 
-        const shubbleBtn = document.getElementById('shubble-btn'); // hidden for now
+        
+        // Check if I am already ready
+        const amIReady = state.ready_players && state.ready_players.includes(gameState.myPlayerId);
 
-        // Hide all first
-        [aduBtn, shertuBtn, genericChallengeBtn, shubbleBtn].forEach(b => {
+        // Hide all challenge buttons initially
+        [aduBtn, shertuBtn, genericChallengeBtn].forEach(b => {
             if(b) b.classList.add('hidden');
         });
 
-        // PING-PONG BUTTON LOGIC
-        // 1. If multiplier is 1: Opposing team sees "Adu"
-        if (currentMult === 1) {
-            if (myTeam !== initialTeam) {
+        // ONLY show challenge buttons if I am NOT ready
+        if (!amIReady && state.last_challenger_team !== myTeam) {
+            if (currentMult === 1 && myTeam !== initialTeam) {
                 aduBtn.classList.remove('hidden');
-                aduBtn.textContent = "Adu";
-            }
-        } 
-        // 2. If multiplier is 2: Original calling team sees "Shertu"
-        else if (currentMult === 2) {
-            if (myTeam !== state.last_challenger_team) {
+            } 
+            else if (currentMult === 2) {
                 shertuBtn.classList.remove('hidden');
-                shertuBtn.textContent = "Shertu";
             }
-        }
-        // 3. Multiplier is 4 or higher: Use generic button for infinite doubling
-        else if (currentMult >= 4) {
-            if (myTeam !== state.last_challenger_team) {
+            else if (currentMult >= 4) {
                 genericChallengeBtn.classList.remove('hidden');
                 genericChallengeBtn.textContent = `Challenge x${currentMult * 2}`;
             }
         }
 
-        // Always show Ready/Status in this phase
-        document.getElementById('proceed-stage2-btn').classList.remove('hidden');
+        // The Ready button itself should probably be disabled if already ready
+        const proceedBtn = document.getElementById('proceed-stage2-btn');
+        proceedBtn.classList.remove('hidden');
+        proceedBtn.disabled = amIReady;
+        proceedBtn.textContent = amIReady ? "Waiting for others..." : "Ready for Stage 2";
+
         document.getElementById('ready-status-container').classList.remove('hidden');
     }
 

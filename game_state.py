@@ -539,18 +539,23 @@ class AduShertuGame:
         return {"success": True}
     
     def toggle_ready_stage2(self, player_id: str) -> bool:
-        """Tracks player readiness. Transitions phase and deals cards when 6/6 ready."""
+        """Tracks player readiness with 'soft lock' logic."""
+        player = next((p for p in self.players if p['id'] == player_id), None)
+        if not player:
+            return False
+
+        # Logic: If you are ready, you cannot challenge. 
+        # This method is called when they click the button, so we just add them.
         if player_id not in self.ready_players:
             self.ready_players.append(player_id)
             
         if len(self.ready_players) == 6:
-            # THIS IS WHERE THE PROCEED LOGIC LIVES NOW
             self._deal_stage2()
             self.phase = GamePhase.STAGE2_CHALLENGING
-            self.ready_players = [] # Reset for next time
-            return True # Signal to app.py that we officially proceeded
+            self.ready_players = [] 
+            return True 
             
-        return False # Not everyone is ready yet
+        return False
 
     def select_trump_after_joint(self, player_index: int, suit: Suit) -> Dict:
         """Select trump suit after calling joint."""

@@ -84,6 +84,15 @@ h1 {
 .btn-danger { background: var(--danger-color); color: white; }
 .btn-challenge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; flex: 1; }
 
+
+#proceed-stage2-btn:disabled {
+    background: var(--secondary-color);
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none; /* Prevents the hover lift effect */
+    box-shadow: none;
+}
+
 /* Game Header */
 .game-header {
     background: var(--card-bg);
