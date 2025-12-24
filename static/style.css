@@ -337,6 +337,13 @@ h1 {
     border-color: #ccc;
 }
 
+.challenge-buttons {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    min-height: 50px; /* Prevents layout jump when buttons appear */
+}
+
 /* Utility */
 .hidden { display: none !important; }
 

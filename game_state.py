@@ -440,78 +440,39 @@ class AduShertuGame:
     
     def attempt_challenge(self, player_index: int, challenge_word: str) -> Dict:
         """
-        Attempt to issue a challenge (Adu, Shertu, Double, Shubble).
-        challenge_word: "adu", "shertu", "double", "shubble"
+        Adjusted Stage 1 logic: Team-based back-and-forth doubling.
         """
         player_team = self.players[player_index]["team"]
         
-        # Determine the team that called trump/joint, which is the "initial team" for Stage 1
-        # For Stage 2, it's the team of the first challenger.
-        if self.trump_caller_index is not None:
-            initial_team = self.players[self.trump_caller_index]["team"]
-        else:
-            initial_team = None # Should not happen if challenge is possible
+        # Identify the team that called trump (Initial Team)
+        initial_team = self.players[self.trump_caller_index]["team"]
 
         if self.phase == GamePhase.STAGE1_CHALLENGING:
-            if challenge_word == "adu":
-                # Only opposing team can call Adu
+            # 1. The very first challenge MUST be 'adu' from the opposite team
+            if self.challenge_multiplier == 1:
                 if player_team == initial_team:
-                    return {"success": False, "message": "Only opposing team can call Adu"}
-                
-                self.challenge_multiplier *= 2
-                self.current_game_okalu = self.base_okalu * self.challenge_multiplier
-                self.last_challenger_team = player_team
-                
-                return {"success": True, "current_okalu": self.current_game_okalu}
+                    return {"success": False, "message": "Only the opposing team can initiate a challenge (Adu)."}
+                if challenge_word != "adu":
+                    return {"success": False, "message": "The first challenge must be 'Adu'."}
             
-            elif challenge_word == "shertu":
-                # Only trump calling team can call Shertu (after Adu)
-                if player_team != initial_team:
-                    return {"success": False, "message": "Only trump calling team can call Shertu"}
-                if self.last_challenger_team != (1 - player_team):
-                    return {"success": False, "message": "Can only call Shertu after Adu"}
-                
-                self.challenge_multiplier *= 2
-                self.current_game_okalu = self.base_okalu * self.challenge_multiplier
-                self.last_challenger_team = player_team
-                
-                return {"success": True, "current_okalu": self.current_game_okalu}
-            
-            # If no challenge pending, allow proceeding to stage 2
-            return {"success": False, "message": "Invalid challenge word or sequence in Stage 1"}
+            # 2. Prevent team from challenging themselves (The Back-and-Forth rule)
+            if self.last_challenger_team == player_team:
+                return {"success": False, "message": "Wait for the other team to respond or ready up."}
 
-        
-        elif self.phase in [GamePhase.STAGE2_CHALLENGING, GamePhase.PLAYING_HAND]:
-            # Can only call double before 2nd card is played
-            if len(self.current_hand_cards) >= 2:
-                return {"success": False, "message": "Too late to challenge"}
+            # 3. Apply the double
+            self.challenge_multiplier *= 2
+            self.current_game_okalu = self.base_okalu * self.challenge_multiplier
+            self.last_challenger_team = player_team
+            # Record the word used (Adu, Shertu, or just 'Challenge')
+            self.challenge_type = challenge_word 
             
-            if challenge_word == "double":
-                if self.pending_challenge:
-                    return {"success": False, "message": "Challenge already pending"}
-                
-                self.challenge_multiplier *= 2
-                self.current_game_okalu = self.base_okalu * self.challenge_multiplier
-                self.last_challenger_team = player_team
-                self.pending_challenge = True
-                self.challenge_type = "double"
-                
-                return {"success": True, "current_okalu": self.current_game_okalu, "awaiting_response": True}
-            
-            elif challenge_word == "shubble":
-                if not self.pending_challenge:
-                    return {"success": False, "message": "No pending challenge to shubble"}
-                if player_team == self.last_challenger_team:
-                    return {"success": False, "message": "Cannot shubble your own challenge"}
-                
-                self.challenge_multiplier *= 2
-                self.current_game_okalu = self.base_okalu * self.challenge_multiplier
-                self.last_challenger_team = player_team
-                self.challenge_type = "shubble"
-                
-                return {"success": True, "current_okalu": self.current_game_okalu, "awaiting_response": True}
+            return {
+                "success": True, 
+                "current_okalu": self.current_game_okalu,
+                "challenge_type": challenge_word
+            }
         
-        return {"success": False, "message": "Invalid challenge"}
+        return {"success": False, "message": "Challenge not allowed in this phase."}
     
     def respond_to_challenge(self, team: int, response: str) -> Dict:
         """
