@@ -139,7 +139,7 @@ function handleGameStateUpdate(data) {
 }
 
 function handleTrumpCalled(data) {
-    // If the server says a choice is required (only happens for the caller)
+    // Scenario A: I am the caller and I have two of the same suit
     if (data.requires_card_choice) {
         const modal = document.getElementById('card-choice-modal');
         const container = document.getElementById('choice-container');
@@ -148,15 +148,15 @@ function handleTrumpCalled(data) {
 
         data.choices.forEach(card => {
             const cardEl = document.createElement('div');
-            // Use your existing suit class logic
             const suitClass = getSuitClass(card.suit);
             cardEl.className = `card ${suitClass}`;
+            // Corrected: Uses the actual card.suit symbol directly
             cardEl.innerHTML = `
                 <div class="card-rank">${card.rank}</div>
                 <div class="card-suit">${card.suit}</div>
                 <div class="card-rank">${card.rank}</div>
             `;
-            // When clicked, send the choice back to the server
+            
             cardEl.onclick = () => {
                 socket.emit('finalize_trump_selection', { 
                     suit: data.suit, 
@@ -166,12 +166,14 @@ function handleTrumpCalled(data) {
             };
             container.appendChild(cardEl);
         });
-        return; // Stop here, we wait for the choice
+        return; 
     }
 
-    // Standard logic if no choice is needed
+    // Scenario B: Standard trump call or choice finalized by someone else
     showStatus(`${data.player_name} called trump: ${data.trump_suit}`, 'success');
-    updateGameState(data.game_state);
+    if (data.game_state) {
+        updateGameState(data.game_state);
+    }
 }
 
 function handleJointCalled(data) {
@@ -236,11 +238,29 @@ function handleCardReplacementRequired(data) {
 }
 
 function handleCardReplaced(data) {
-    showStatus('Card replaced and shown to all players', 'success');
-    // If I am the one who replaced the card, my local gameState needs to know
-    if (gameState.game_state.players[data.player_index].id === gameState.myPlayerId) {
-        // The game_state_update event from the server will handle the bulk of this,
-        // but we can trigger a re-render just in case.
+    // 1. Determine who did the replacement
+    const player = gameState.game_state.players[data.player_index];
+    const playerName = player ? player.name : `Player ${data.player_index + 1}`;
+    
+    // 2. Format the revealed cards for the message
+    const disc = data.discarded;
+    const final = data.final_card;
+    const shownCount = data.replacements_shown ? data.replacements_shown.length : 1;
+
+    let msg = `${playerName} showed and discarded ${disc.rank}${disc.suit}. `;
+    if (shownCount > 1) {
+        msg += `Drew ${shownCount} cards until getting ${final.rank}${final.suit}.`;
+    } else {
+        msg += `Replaced with ${final.rank}${final.suit}.`;
+    }
+    
+    // Show the aesthetic warning message at the bottom
+    showStatus(msg, 'warning');
+
+    // 3. If I am the one who had the replacement, force my hand to re-render
+    if (gameState.myPlayerId === gameState.game_state.players[data.player_index].id) {
+        // We sync the cards manually here to ensure the UI pops immediately
+        gameState.myCards = gameState.game_state.players[data.player_index].cards;
         renderMyCards();
     }
 }
