@@ -469,7 +469,7 @@ function getPhaseText(phase) {
 }
 
 function updateActionPanels(state) {
-    // Hide all action groups by default
+    // 1. Hide all action groups by default
     document.querySelectorAll('.action-group').forEach(g => g.classList.add('hidden'));
     
     const myPlayer = state.players.find(p => p.id === gameState.myPlayerId);
@@ -477,7 +477,10 @@ function updateActionPanels(state) {
 
     const myIdx = state.players.indexOf(myPlayer);
     const myTeam = myPlayer.team;
-    const initialTeam = state.players[state.trump_caller_index]?.team;
+    
+    // Safety check for multiplier to prevent NaN
+    const currentMult = state.challenge_multiplier || 1;
+    const initialTeam = (state.trump_caller_index !== null) ? state.players[state.trump_caller_index].team : null;
 
     // --- PHASE: STAGE 1 TRUMP CALLING ---
     if (state.phase === 'stage1_trump_calling' && myIdx === state.trump_calling_index) {
@@ -502,54 +505,56 @@ function updateActionPanels(state) {
         }
     }
 
-    // --- PHASE: STAGE 1 CHALLENGING (Back-and-Forth Logic) ---
+    // --- PHASE: STAGE 1 CHALLENGING (Restored specific buttons) ---
     if (state.phase === 'stage1_challenging') {
         const challengePanel = document.getElementById('challenge-actions');
         challengePanel.classList.remove('hidden');
 
-        // References to our challenge buttons
         const aduBtn = document.getElementById('adu-btn');
         const shertuBtn = document.getElementById('shertu-btn');
-        const doubleBtn = document.getElementById('double-btn'); // Used as the generic "Challenge" button
-        const shubbleBtn = document.getElementById('shubble-btn');
+        const genericChallengeBtn = document.getElementById('double-btn'); 
+        const shubbleBtn = document.getElementById('shubble-btn'); // hidden for now
 
-        // Hide specific buttons initially
-        [aduBtn, shertuBtn, doubleBtn, shubbleBtn].forEach(b => b.classList.add('hidden'));
+        // Hide all first
+        [aduBtn, shertuBtn, genericChallengeBtn, shubbleBtn].forEach(b => {
+            if(b) b.classList.add('hidden');
+        });
 
-        // Determine if it is my team's turn to challenge
-        // 1. If multiplier is 1: Only Opponents can call 'Adu'
-        if (state.challenge_multiplier === 1) {
+        // PING-PONG BUTTON LOGIC
+        // 1. If multiplier is 1: Opposing team sees "Adu"
+        if (currentMult === 1) {
             if (myTeam !== initialTeam) {
                 aduBtn.classList.remove('hidden');
                 aduBtn.textContent = "Adu";
             }
         } 
-        // 2. If multiplier > 1: Only the team that didn't do the last challenge can raise
+        // 2. If multiplier is 2: Original calling team sees "Shertu"
+        else if (currentMult === 2) {
+            if (myTeam !== state.last_challenger_team) {
+                shertuBtn.classList.remove('hidden');
+                shertuBtn.textContent = "Shertu";
+            }
+        }
+        // 3. Multiplier is 4 or higher: Use generic button for infinite doubling
         else {
             if (myTeam !== state.last_challenger_team) {
-                doubleBtn.classList.remove('hidden');
-                
-                // Labeling logic: 2nd challenge is Shertu, others are "Challenge xN"
-                if (state.challenge_multiplier === 2) {
-                    doubleBtn.textContent = "Shertu";
-                } else {
-                    doubleBtn.textContent = `Challenge x${state.challenge_multiplier * 2}`;
-                }
+                genericChallengeBtn.classList.remove('hidden');
+                genericChallengeBtn.textContent = `Challenge x${currentMult * 2}`;
             }
         }
 
-        // Persistent "Ready" UI: Always show these during the challenging phase
+        // Always show Ready/Status in this phase
         document.getElementById('proceed-stage2-btn').classList.remove('hidden');
         document.getElementById('ready-status-container').classList.remove('hidden');
     }
 
-    // --- PHASE: STAGE 2 TRUMP SELECTION (Joint Call) ---
+    // --- PHASE: STAGE 2 TRUMP SELECTION ---
     if (state.phase === 'stage2_trump_selection' && myIdx === state.joint_caller_index) {
         document.getElementById('joint-trump-selection').classList.remove('hidden');
         renderJointSuitButtons();
     }
 
-    // --- PHASE: CHALLENGE RESPONSE (Respond to Double/Shubble in Stage 2) ---
+    // --- PHASE: STAGE 2 CHALLENGE RESPONSE ---
     if (state.pending_challenge && gameState.myTeam !== state.last_challenger_team) {
         document.getElementById('challenge-response-actions').classList.remove('hidden');
     }
