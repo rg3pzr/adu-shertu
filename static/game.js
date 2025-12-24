@@ -217,7 +217,7 @@ function handleChallengeIssued(data) {
         const mult = state.challenge_multiplier || (current / base);
         
         if (mult > 2) {
-            displayWord = `CHALLENGE x${mult}`;
+            displayWord = `CHALLENGE x${mult*2}`;
         }
     }
 
