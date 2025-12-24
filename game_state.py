@@ -440,39 +440,39 @@ class AduShertuGame:
     
     def attempt_challenge(self, player_index: int, challenge_word: str) -> Dict:
         """
-        Adjusted Stage 1 logic: Team-based back-and-forth doubling.
+        Handles back-and-forth challenges (Adu, Shertu, Challenge xN).
         """
         player_team = self.players[player_index]["team"]
-        
-        # Identify the team that called trump (Initial Team)
         initial_team = self.players[self.trump_caller_index]["team"]
 
-        if self.phase == GamePhase.STAGE1_CHALLENGING:
-            # 1. The very first challenge MUST be 'adu' from the opposite team
-            if self.challenge_multiplier == 1:
-                if player_team == initial_team:
-                    return {"success": False, "message": "Only the opposing team can initiate a challenge (Adu)."}
-                if challenge_word != "adu":
-                    return {"success": False, "message": "The first challenge must be 'Adu'."}
-            
-            # 2. Prevent team from challenging themselves (The Back-and-Forth rule)
-            if self.last_challenger_team == player_team:
-                return {"success": False, "message": "Wait for the other team to respond or ready up."}
+        # 1. Back-and-Forth Validation
+        if self.last_challenger_team == player_team:
+            return {"success": False, "message": "Wait for the other team to respond or ready up."}
 
-            # 3. Apply the double
-            self.challenge_multiplier *= 2
-            self.current_game_okalu = self.base_okalu * self.challenge_multiplier
-            self.last_challenger_team = player_team
-            # Record the word used (Adu, Shertu, or just 'Challenge')
-            self.challenge_type = challenge_word 
-            
-            return {
-                "success": True, 
-                "current_okalu": self.current_game_okalu,
-                "challenge_type": challenge_word
-            }
+        # 2. Sequential Validation
+        if self.challenge_multiplier == 1:
+            if player_team == initial_team:
+                return {"success": False, "message": "Only opposing team can call Adu."}
+            if challenge_word != "adu":
+                return {"success": False, "message": "First challenge must be 'Adu'."}
         
-        return {"success": False, "message": "Challenge not allowed in this phase."}
+        # 3. Apply the Challenge
+        # Double the existing multiplier
+        self.challenge_multiplier *= 2 
+        self.current_game_okalu = self.base_okalu * self.challenge_multiplier
+        self.last_challenger_team = player_team
+        self.challenge_type = challenge_word
+        
+        # Reset ready players: Every time someone raises the stakes, 
+        # everyone must click "Ready" again to confirm the new Okalu.
+        self.ready_players = []
+
+        return {
+            "success": True, 
+            "current_okalu": self.current_game_okalu,
+            "challenge_type": challenge_word,
+            "player_name": self.players[player_index]['name']
+        }
     
     def respond_to_challenge(self, team: int, response: str) -> Dict:
         """

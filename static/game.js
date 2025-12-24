@@ -98,6 +98,21 @@ function init() {
     document.getElementById('new-game-btn').addEventListener('click', () => {
         location.reload();
     });
+
+    // Adu Button
+    document.getElementById('adu-btn').onclick = () => {
+        socket.emit('challenge', { challenge_word: 'adu' });
+    };
+
+    // Shertu Button
+    document.getElementById('shertu-btn').onclick = () => {
+        socket.emit('challenge', { challenge_word: 'shertu' });
+    };
+
+    // Generic Challenge Button (for x8, x16, etc.)
+    document.getElementById('double-btn').onclick = () => {
+        socket.emit('challenge', { challenge_word: 'double' }); 
+    };
 }
 
 // Socket event handlers
