@@ -162,11 +162,12 @@ class AduShertuGame:
             player["cards"] = []
         
         # Start stage 1: deal 2 cards to each player
-        self._deal_stage1()
-        self.phase = GamePhase.STAGE1_TRUMP_CALLING
+        
         
         # Trump calling starts to the left of the dealer
-        self.trump_calling_index = (self.dealer_index + 1) % 6
+        self.trump_calling_index = self.dealer_index
+        self.phase = GamePhase.STAGE1_TRUMP_CALLING
+        self._deal_stage1()
     
     def _create_deck(self) -> List[Card]:
         """Create a 24-card deck (9, 10, J, Q, K, A of each suit)."""
@@ -304,7 +305,7 @@ class AduShertuGame:
                 self._deal_stage1()
                 
                 # Reset trump calling turn back to dealer's left
-                self.trump_calling_index = (self.dealer_index + 1) % 6
+                self.trump_calling_index = self.dealer_index
                 
                 return {
                     "success": True,
@@ -421,22 +422,18 @@ class AduShertuGame:
         }
 
     def _calculate_base_okalu(self, trump_caller_index: int) -> int:
-        """Calculate base okalu based on trump caller's distance from dealer."""
-        # Calculate distance from dealer: (caller_index - dealer_index) % 6
-        # The PDF describes the order relative to the dealer:
-        # 0: Dealer (6 points)
-        # 1: Player to left (5 points)
-        # 2: Player next to that (4 points)
-        # 3: Furthest player (3 points)
-        # 4: Player next to that on the right side of dealer (4 points)
-        # 5: Player to right of dealer (5 points)
-        distance = (trump_caller_index - self.dealer_index) % 6
-        okalu_map = {0: 6, 1: 5, 2: 4, 3: 3, 4: 4, 5: 5}
-        
-        # NOTE: The rule states: "Starting from the dealer, the player will look at their cards..."
-        # This implies the dealer is the first person to check, making distance 0.
-        
-        return okalu_map[distance]
+        """
+        Dealer (distance 0) = 6
+        Adjacent (distance 1) = 5
+        Next Adjacent (distance 2) = 4
+        Opposite (distance 3) = 3
+        """
+        diff = abs(trump_caller_index - self.dealer_index)
+        if diff > 3:
+            diff = 6 - diff
+            
+        okalu_map = {0: 6, 1: 5, 2: 4, 3: 3}
+        return okalu_map[diff]
     
     def attempt_challenge(self, player_index: int, challenge_word: str) -> Dict:
         """

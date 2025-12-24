@@ -203,8 +203,22 @@ function handleTrumpPassed(data) {
 }
 
 function handleChallengeIssued(data) {
-    showStatus(`${data.player_name} called ${data.challenge_word.toUpperCase()}!`, 'warning');
-    // Ensure this line exists to refresh the UI buttons!
+    let displayWord = data.challenge_word.toUpperCase();
+    
+    // Check if we are in Stage 1 back-and-forth
+    if (data.game_state.phase.includes('stage1')) {
+        const current = data.game_state.current_game_okalu;
+        const base = data.game_state.base_okalu;
+        
+        // Only show x multiplier if someone has actually doubled (Adu/Shertu)
+        if (current > base) {
+            const mult = current / base;
+            displayWord = `CHALLENGE x${mult}`;
+        }
+    }
+
+    showStatus(`${data.player_name} called ${displayWord}!`, 'warning');
+    
     if (data.game_state) {
         updateGameState(data.game_state);
     }
