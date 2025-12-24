@@ -205,20 +205,25 @@ function handleTrumpPassed(data) {
 function handleChallengeIssued(data) {
     let displayWord = data.challenge_word.toUpperCase();
     
-    // Check if we are in Stage 1 back-and-forth
-    if (data.game_state.phase.includes('stage1')) {
-        const current = data.game_state.current_game_okalu;
-        const base = data.game_state.base_okalu;
+    // Access our global state variable instead of the local 'data'
+    const state = gameState.game_state;
+
+    // Check if the global state exists and we are in Stage 1
+    if (state && state.phase && state.phase.includes('stage1')) {
+        const current = state.current_game_okalu;
+        const base = state.base_okalu;
         
-        // Only show x multiplier if someone has actually doubled (Adu/Shertu)
-        if (current > base) {
-            const mult = current / base;
+        // Use the challenge_multiplier from state for a more reliable check
+        const mult = state.challenge_multiplier || (current / base);
+        
+        if (mult > 1) {
             displayWord = `CHALLENGE x${mult}`;
         }
     }
 
     showStatus(`${data.player_name} called ${displayWord}!`, 'warning');
     
+    // Now update the state with the new data passed from the server
     if (data.game_state) {
         updateGameState(data.game_state);
     }

@@ -429,11 +429,12 @@ def handle_challenge(data):
     result = game.attempt_challenge(player_index, challenge_word)
     
     if result['success']:
+        fresh_state = game.get_game_state()
         # BROADCAST to everyone so their buttons swap immediately
         socketio.emit('challenge_issued', {
             'player_name': result['player_name'],
             'challenge_word': challenge_word,
-            'game_state': game.get_game_state() # Crucial: send the fresh state
+            'game_state': fresh_state # Crucial: send the fresh state
         }, room=game_code)
         
         # Also send a general update just to be safe
