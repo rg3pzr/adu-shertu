@@ -297,6 +297,13 @@ function handleCardReplaced(data) {
         gameState.myCards = gameState.game_state.players[data.player_index].cards;
         renderMyCards();
     }
+
+    if (data.game_state) {
+        updateGameState(data.game_state);
+    } else {
+        // Fallback: request a fresh state from the server if it wasn't pushed
+        socket.emit('request_game_state', {});
+    }
 }
 
 function handleStage2Started(data) {
