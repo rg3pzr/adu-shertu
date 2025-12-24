@@ -68,7 +68,7 @@ function init() {
     socket.on('trump_selected_joint', handleTrumpSelectedJoint);
     socket.on('trump_choice_required', handleTrumpCalled);
 
-    socket.on()
+    //socket.on()
     
     // Trump calling action buttons
     document.querySelectorAll('.btn-suit').forEach(btn => {

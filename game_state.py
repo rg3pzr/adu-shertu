@@ -872,6 +872,8 @@ class AduShertuGame:
             "trump_caller_index": self.trump_caller_index,
             "team_okalu": self.team_okalu.copy(),
             "current_game_okalu": self.current_game_okalu,
+            "challenge_multiplier": self.challenge_multiplier,
+            "last_challenger_team": self.last_challenger_team,
             "current_hand_number": self.current_hand_number,
             "current_hand_cards": [(i, c.to_dict()) for i, c in self.current_hand_cards],
             "leading_suit": self.leading_suit.value if self.leading_suit else None,
